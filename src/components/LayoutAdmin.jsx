@@ -6,8 +6,8 @@ export default function LayoutAdmin() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem('user_session');
     navigate('/login');
   };
 

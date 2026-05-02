@@ -15,38 +15,38 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-      // 1. Cek kredensial ke tabel 'users' manual
+      // Ambil user berdasarkan email saja dulu
       const { data: userData, error: userError } = await supabase
-        .from('users') // Menggunakan tabel users biasa
+        .from('users')
         .select('*')
         .eq('email', email)
-        .eq('password', password) // Catatan: Idealnya password di-hash di backend
         .single();
 
       if (userError || !userData) {
         throw new Error("Email atau password salah.");
       }
 
-      console.log('Login berhasil:', userData);
-      
-      // 2. Simpan data user ke localStorage agar bisa diakses oleh AuthGuard/Layout
-      // Karena kita pakai tabel biasa, kita simulasi session sendiri
-      localStorage.setItem('user_session', JSON.stringify(userData));
+      // Verifikasi password via fungsi pgcrypto di Supabase
+      const { data: verified, error: verifyError } = await supabase
+        .rpc('verify_password', { 
+          input_password: password, 
+          stored_hash: userData.password 
+        });
 
-      alert(`Selamat datang kembali, ${userData.full_name}!`);
-      
-      // 3. Arahkan berdasarkan role yang ada di tabel users
-      if (userData.role === 'admin') {
-        navigate('/admin');
-      } else if (userData.role === 'student') {
-        navigate('/student');
-      } else {
-        throw new Error("Role tidak dikenali oleh sistem.");
+      if (verifyError || !verified) {
+        throw new Error("Email atau password salah.");
       }
 
+      // Jangan simpan password hash ke localStorage!
+      const { password: _, ...safeUser } = userData;
+      localStorage.setItem('user_session', JSON.stringify(safeUser));
+
+      if (userData.role === 'admin') navigate('/admin');
+      else if (userData.role === 'student') navigate('/student');
+      else throw new Error("Role tidak dikenali.");
+
     } catch (error) {
-      setErrorMsg('Gagal masuk: ' + (error.message || 'Terjadi kesalahan sistem.'));
-      console.error('Login Error:', error);
+      setErrorMsg('Gagal masuk: ' + error.message);
     } finally {
       setLoading(false);
     }

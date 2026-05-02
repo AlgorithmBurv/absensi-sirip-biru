@@ -6,9 +6,9 @@ export default function LayoutStudent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+  const handleLogout = () => {
+    localStorage.removeItem("user_session");
+    navigate("/login");
   };
 
   return (

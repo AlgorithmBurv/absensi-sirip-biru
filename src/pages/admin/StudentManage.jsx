@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 export default function StudentManage() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [form, setForm] = useState({ nis: '', class_id: '' });
+  const [form, setForm] = useState({ nis: '', class_id: '', email: '' });
 
   const fetchData = async () => {
     const { data: cls } = await supabase.from('classes').select('*');
@@ -19,17 +19,29 @@ export default function StudentManage() {
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
-    // Generate Token Unik untuk QR Code
-    const qrToken = uuidv4(); 
-    
-    // Catatan: Pada implementasi nyata, profile_id harus didapat dari Supabase Auth
-    // Di sini kita anggap profile_id null sementara atau diisi manual
-    const { error } = await supabase.from('students').insert([{ 
-      nis: form.nis, class_id: form.class_id, qr_token: qrToken 
+    const qrToken = uuidv4();
+
+    // Cari user_id berdasarkan email
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', form.email)
+      .single();
+
+    if (userError || !user) {
+      alert('Email tidak ditemukan. Pastikan user sudah dibuat terlebih dahulu.');
+      return;
+    }
+
+    const { error } = await supabase.from('students').insert([{
+      nis: form.nis,
+      class_id: form.class_id,
+      qr_token: qrToken,
+      user_id: user.id  // ✅ user_id sekarang terisi
     }]);
 
     if (!error) {
-      alert('Siswa berhasil ditambah dengan QR Token unik!');
+      alert('Siswa berhasil ditambah!');
       fetchData();
     } else {
       alert('Gagal: ' + error.message);
@@ -40,12 +52,19 @@ export default function StudentManage() {
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
       <h2 className="text-xl font-bold text-slate-800 mb-4">Manajemen Atlet</h2>
       
-      <form onSubmit={handleAddStudent} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <form onSubmit={handleAddStudent} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <input type="text" placeholder="NIS / No Anggota" required onChange={e => setForm({...form, nis: e.target.value})} className="border px-4 py-2 rounded-lg" />
         <select required onChange={e => setForm({...form, class_id: e.target.value})} className="border px-4 py-2 rounded-lg bg-white">
           <option value="">Pilih Kelas</option>
           {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <input 
+          type="email" 
+          placeholder="Email user siswa" 
+          required 
+          onChange={e => setForm({...form, email: e.target.value})} 
+          className="border px-4 py-2 rounded-lg" 
+        />
         <button type="submit" className="bg-cyan-600 text-white rounded-lg py-2 font-medium">Tambah Atlet</button>
       </form>
 
