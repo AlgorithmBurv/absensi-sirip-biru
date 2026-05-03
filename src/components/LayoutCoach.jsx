@@ -5,16 +5,13 @@ import {
   CalendarDays,
   LogOut,
   Menu,
-  X,
-  Droplets,
-  ClipboardList
+  ClipboardList,
 } from "lucide-react";
 
 export default function LayoutCoach() {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Default false agar otomatis mengecil di desktop (mode hover)
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -22,11 +19,18 @@ export default function LayoutCoach() {
     navigate("/login");
   };
 
-  // Menu khusus untuk Pelatih
   const menuItems = [
     { name: "My QR Pass", path: "/coach", icon: <QrCode size={22} /> },
-    { name: "My Schedule", path: "/coach/schedule", icon: <CalendarDays size={22} /> },
-    { name: "Attendance Logs", path: "/coach/logs", icon: <ClipboardList size={22} /> },
+    {
+      name: "My Schedule",
+      path: "/coach/schedule",
+      icon: <CalendarDays size={22} />,
+    },
+    {
+      name: "Attendance Logs",
+      path: "/coach/logs",
+      icon: <ClipboardList size={22} />,
+    },
   ];
 
   const pageTitle =
@@ -44,7 +48,7 @@ export default function LayoutCoach() {
         />
       )}
 
-      {/* Sidebar - Tema Gelap (Deep Oceanic Blue) */}
+      {/* Sidebar */}
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
@@ -60,12 +64,18 @@ export default function LayoutCoach() {
       >
         {/* Logo Area */}
         <div className="h-20 px-6 flex items-center border-b border-white/10">
-          <div className="bg-blue-500 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/30">
-            <Droplets size={22} className="text-white" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/30 overflow-hidden">
+            <img
+              src="/sirip_biru.webp"
+              alt="Siripbiru Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           <span
             className={`ml-3 font-black text-xl tracking-wide whitespace-nowrap transition-opacity duration-300 ${
-              sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
+              sidebarOpen
+                ? "opacity-100"
+                : "opacity-0 lg:group-hover:opacity-100"
             }`}
           >
             Sirip<span className="text-blue-400">biru</span>
@@ -73,10 +83,12 @@ export default function LayoutCoach() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <p
             className={`px-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 transition-opacity duration-300 ${
-              sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
+              sidebarOpen
+                ? "opacity-100"
+                : "opacity-0 lg:group-hover:opacity-100"
             }`}
           >
             Coach Portal
@@ -87,7 +99,9 @@ export default function LayoutCoach() {
               <Link
                 key={item.name}
                 to={item.path}
-                onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)}
+                onClick={() =>
+                  window.innerWidth < 1024 && setSidebarOpen(false)
+                }
                 title={item.name}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 ${
                   isActive
@@ -98,7 +112,9 @@ export default function LayoutCoach() {
                 <div className="flex-shrink-0">{item.icon}</div>
                 <span
                   className={`font-medium whitespace-nowrap transition-opacity duration-300 ${
-                    sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
+                    sidebarOpen
+                      ? "opacity-100"
+                      : "opacity-0 lg:group-hover:opacity-100"
                   }`}
                 >
                   {item.name}
@@ -108,7 +124,7 @@ export default function LayoutCoach() {
           })}
         </nav>
 
-        {/* User / Logout Profile Area */}
+        {/* Logout Area */}
         <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
@@ -120,7 +136,9 @@ export default function LayoutCoach() {
             </div>
             <span
               className={`font-medium whitespace-nowrap transition-opacity duration-300 ${
-                sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
+                sidebarOpen
+                  ? "opacity-100"
+                  : "opacity-0 lg:group-hover:opacity-100"
               }`}
             >
               Sign Out
@@ -134,7 +152,6 @@ export default function LayoutCoach() {
         {/* Top Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 lg:px-8 flex items-center justify-between z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            {/* Tombol hamburger hanya muncul di Mobile */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="p-2.5 rounded-xl hover:bg-slate-50 text-slate-500 transition-colors border border-transparent hover:border-slate-100 lg:hidden"
@@ -163,7 +180,7 @@ export default function LayoutCoach() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc]">
+        <main className="flex-1 overflow-y-auto bg-[#f8fafc] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="animate-in fade-in duration-300 h-full">
             <Outlet />
           </div>

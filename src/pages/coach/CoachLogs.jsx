@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  X,
 } from "lucide-react";
 
 export default function CoachLogs() {
@@ -32,7 +33,6 @@ export default function CoachLogs() {
         if (!savedUser) throw new Error("Session expired.");
         const user = JSON.parse(savedUser);
 
-        // Ambil coach_id berdasarkan user_id
         const { data: coachData, error: coachError } = await supabase
           .from("coaches")
           .select("id")
@@ -41,7 +41,6 @@ export default function CoachLogs() {
 
         if (coachError || !coachData) throw new Error("Coach profile not found.");
 
-        // Ambil attendance logs milik coach ini
         const { data, error } = await supabase
           .from("attendance_logs")
           .select(`
@@ -110,7 +109,15 @@ export default function CoachLogs() {
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
-  // Summary counts
+  const hasActiveFilters = searchQuery || filterStatus !== "all" || dateFrom || dateTo;
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setFilterStatus("all");
+    setDateFrom("");
+    setDateTo("");
+  };
+
   const totalHadir = logs.filter((l) => l.status.includes("hadir")).length;
   const totalIzin = logs.filter((l) => l.status === "izin").length;
   const totalSakit = logs.filter((l) => l.status === "sakit").length;
@@ -135,7 +142,7 @@ export default function CoachLogs() {
       />
 
       {/* Header */}
-      <div className="max-w-5xl mx-auto mb-8">
+      <div className="max-w-7xl mx-auto mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
           <ClipboardList className="text-blue-600" size={32} />
           Attendance Logs
@@ -146,12 +153,12 @@ export default function CoachLogs() {
       </div>
 
       {/* Summary Cards */}
-      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Present", value: totalHadir, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Excused", value: totalIzin, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Sick", value: totalSakit, color: "text-red-500", bg: "bg-red-50" },
-          { label: "Absent", value: totalAlpa, color: "text-slate-500", bg: "bg-slate-50" },
+          { label: "Present", value: totalHadir, color: "text-emerald-600" },
+          { label: "Excused", value: totalIzin, color: "text-amber-600" },
+          { label: "Sick", value: totalSakit, color: "text-red-500" },
+          { label: "Absent", value: totalAlpa, color: "text-slate-500" },
         ].map((card) => (
           <div
             key={card.label}
@@ -163,31 +170,35 @@ export default function CoachLogs() {
         ))}
       </div>
 
-      {/* Controls */}
-      <div className="max-w-5xl mx-auto mb-6 flex flex-col gap-4">
-        {/* Row 1: Search, Filter, Sort */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative md:col-span-2">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search size={18} className="text-slate-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search session name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-            />
-          </div>
+      {/* Controls Card — sama persis strukturnya dengan Recap.tsx */}
+      <div className="max-w-7xl mx-auto mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4">
 
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Filter size={18} className="text-slate-400" />
+        {/* Row 1: Search */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={16} className="text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search session name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+
+        {/* Row 2: Filter Status + Date Range + Sort + Clear */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+
+          {/* Filter Status */}
+          <div className="relative flex-shrink-0 sm:w-48">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Filter size={15} className="text-slate-400" />
             </div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm appearance-none cursor-pointer font-medium text-slate-600"
+              className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-600"
             >
               <option value="all">All Status</option>
               <option value="hadir_manual">Present (Manual)</option>
@@ -197,42 +208,45 @@ export default function CoachLogs() {
             </select>
           </div>
 
-          <button
-            onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
-            className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 px-4 rounded-2xl shadow-sm transition-all"
-          >
-            <ArrowUpDown size={16} className={sortOrder === "desc" ? "text-blue-600" : "text-slate-400"} />
-            <span className="text-sm">Sort: {sortOrder === "desc" ? "Newest" : "Oldest"}</span>
-          </button>
-        </div>
-
-        {/* Row 2: Date Range */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
-            <CalendarDays size={15} />
-            Date Range
-          </div>
-          <div className="flex flex-1 flex-col sm:flex-row gap-3 w-full">
+          {/* Date Range */}
+          <div className="flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
+              <CalendarDays size={14} />
+              <span className="hidden md:inline">From</span>
+            </div>
             <input
               type="date"
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium text-slate-600 cursor-pointer"
+              className="flex-1 min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
             />
-            <div className="hidden sm:flex items-center text-slate-300 font-bold shrink-0 self-center">—</div>
+            <span className="text-slate-300 font-bold shrink-0">—</span>
             <input
               type="date"
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
-              className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium text-slate-600 cursor-pointer"
+              className="flex-1 min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
             />
-            {(dateFrom || dateTo) && (
+          </div>
+
+          {/* Sort + Clear */}
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+              className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-3 px-4 rounded-2xl transition-all text-sm"
+            >
+              <ArrowUpDown size={15} className={sortOrder === "desc" ? "text-blue-600" : "text-slate-400"} />
+              {sortOrder === "desc" ? "Newest" : "Oldest"}
+            </button>
+
+            {hasActiveFilters && (
               <button
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                className="shrink-0 px-4 py-3 bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 font-bold rounded-2xl text-sm transition-all border border-slate-200 hover:border-red-200"
+                onClick={clearAllFilters}
+                className="flex items-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-500 font-bold py-3 px-4 rounded-2xl transition-all text-sm"
               >
+                <X size={15} />
                 Clear
               </button>
             )}
@@ -241,7 +255,7 @@ export default function CoachLogs() {
       </div>
 
       {/* Table */}
-      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[400px]">
+      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[400px]">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
           <h2 className="font-bold text-slate-800">Log History</h2>
           <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
@@ -314,7 +328,7 @@ export default function CoachLogs() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {totalPages > 0 && (
           <div className="p-4 border-t border-slate-50 flex items-center justify-between bg-slate-50/50">
             <span className="text-xs font-medium text-slate-500 pl-2">
               Showing Page{" "}

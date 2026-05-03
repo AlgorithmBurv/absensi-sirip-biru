@@ -1,17 +1,85 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { toast, Toaster } from "react-hot-toast";
-import { Layers, Plus, Edit2, Trash2, X, Search, Bookmark } from "lucide-react";
+import {
+  Layers,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  Search,
+  Bookmark,
+  AlertTriangle,
+} from "lucide-react";
+
+// ============================================================
+// REUSABLE CONFIRMATION MODAL
+// ============================================================
+function ConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmLabel = "Delete",
+  isDestructive = true,
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-8 flex flex-col items-center text-center">
+          <div
+            className={`w-16 h-16 rounded-full flex items-center justify-center mb-5 ${isDestructive ? "bg-red-50" : "bg-amber-50"}`}
+          >
+            <AlertTriangle
+              size={30}
+              className={isDestructive ? "text-red-500" : "text-amber-500"}
+            />
+          </div>
+          <h3 className="text-lg font-black text-slate-800 mb-2">{title}</h3>
+          <p className="text-sm text-slate-500 leading-relaxed">{message}</p>
+        </div>
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-3 font-bold text-white rounded-2xl shadow-lg transition-all active:scale-95
+              ${
+                isDestructive
+                  ? "bg-red-500 hover:bg-red-600 shadow-red-500/30"
+                  : "bg-amber-500 hover:bg-amber-600 shadow-amber-500/30"
+              }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ClassManage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
   const [form, setForm] = useState({ name: "" });
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    id: null,
+    name: "",
+  });
 
   const fetchClasses = async () => {
     setLoading(true);
@@ -28,7 +96,6 @@ export default function ClassManage() {
     fetchClasses();
   }, []);
 
-  // Modal Handlers
   const openAddModal = () => {
     setForm({ name: "" });
     setIsEditing(false);
@@ -43,7 +110,6 @@ export default function ClassManage() {
     setIsModalOpen(true);
   };
 
-  // Submit Handler (Add & Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
     const loadingToast = toast.loading(
@@ -60,9 +126,8 @@ export default function ClassManage() {
         toast.success("Class updated successfully", { id: loadingToast });
         setIsModalOpen(false);
         fetchClasses();
-      } else {
+      } else
         toast.error(`Failed to update: ${error.message}`, { id: loadingToast });
-      }
     } else {
       const { error } = await supabase
         .from("classes")
@@ -72,26 +137,29 @@ export default function ClassManage() {
         toast.success("Class created successfully", { id: loadingToast });
         setIsModalOpen(false);
         fetchClasses();
-      } else {
+      } else
         toast.error(`Failed to create: ${error.message}`, { id: loadingToast });
-      }
     }
   };
 
-  // Delete Handler
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to permanently delete this class?"))
-      return;
+  const confirmDelete = (c) => {
+    setConfirmModal({ open: true, id: c.id, name: c.name });
+  };
 
+  const handleDelete = async () => {
     const loadingToast = toast.loading("Deleting class...");
-    const { error } = await supabase.from("classes").delete().eq("id", id);
+    setConfirmModal({ open: false, id: null, name: "" });
+
+    const { error } = await supabase
+      .from("classes")
+      .delete()
+      .eq("id", confirmModal.id);
 
     if (!error) {
       toast.success("Class deleted successfully", { id: loadingToast });
       fetchClasses();
-    } else {
+    } else
       toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
-    }
   };
 
   return (
@@ -101,8 +169,26 @@ export default function ClassManage() {
         toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }}
       />
 
-      {/* Header Section */}
-      <div className="max-w-5xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ open: false, id: null, name: "" })}
+        onConfirm={handleDelete}
+        title="Delete This Class?"
+        message={
+          <>
+            Are you sure you want to permanently delete{" "}
+            <span className="font-bold text-slate-700">
+              "{confirmModal.name}"
+            </span>
+            ? This action cannot be undone.
+          </>
+        }
+        confirmLabel="Yes, Delete"
+      />
+
+      {/* Header */}
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Class Levels
@@ -113,7 +199,6 @@ export default function ClassManage() {
         </div>
         <button
           onClick={openAddModal}
-          title="Click to create a new class"
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
           <Plus size={18} />
@@ -121,20 +206,16 @@ export default function ClassManage() {
         </button>
       </div>
 
-      {/* Data Section */}
-      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden">
+      {/* Table */}
+      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
           <h2 className="font-bold text-slate-800">Class Inventory</h2>
-          <span
-            title="Total registered classes"
-            className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold"
-          >
+          <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
             {classes.length} Classes
           </span>
         </div>
-
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
                 <th className="px-8 py-4">Class Details</th>
@@ -166,14 +247,12 @@ export default function ClassManage() {
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <button
                         onClick={() => openEditModal(c)}
-                        title="Edit class name"
                         className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button
-                        onClick={() => handleDelete(c.id)}
-                        title="Delete class permanently"
+                        onClick={() => confirmDelete(c)}
                         className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"
                       >
                         <Trash2 size={16} />
@@ -204,13 +283,10 @@ export default function ClassManage() {
         </div>
       </div>
 
-      {/* ========================================= */}
-      {/* MODAL FORM (Add & Edit) */}
-      {/* ========================================= */}
+      {/* Add/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit2 size={24} /> : <Plus size={24} />}
@@ -220,14 +296,12 @@ export default function ClassManage() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                title="Close window"
                 className="p-2 bg-white rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 shadow-sm border border-slate-100 transition-all"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Modal Body / Form */}
             <form onSubmit={handleSubmit} className="p-8">
               <div className="space-y-2 mb-8">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
@@ -243,7 +317,6 @@ export default function ClassManage() {
                 />
               </div>
 
-              {/* Modal Footer */}
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -254,7 +327,6 @@ export default function ClassManage() {
                 </button>
                 <button
                   type="submit"
-                  title={isEditing ? "Save updated class" : "Create new class"}
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 flex items-center gap-2"
                 >
                   {isEditing ? "Save Changes" : "Create Class"}

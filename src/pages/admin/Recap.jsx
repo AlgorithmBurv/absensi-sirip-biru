@@ -15,6 +15,7 @@ import {
   Clock,
   Users,
   UserPlus,
+  X,
 } from "lucide-react";
 
 export default function Recap() {
@@ -128,7 +129,7 @@ export default function Recap() {
   const totalPages = Math.ceil(processedLogs.length / ITEMS_PER_PAGE);
   const paginatedLogs = processedLogs.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const handleExportExcel = () => {
@@ -185,6 +186,15 @@ export default function Recap() {
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
+  const hasActiveFilters = searchQuery || filterStatus !== "all" || dateFrom || dateTo;
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setFilterStatus("all");
+    setDateFrom("");
+    setDateTo("");
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans">
       <Toaster
@@ -213,43 +223,43 @@ export default function Recap() {
         </button>
       </div>
 
-      {/* Toggle Athlete / Coach */}
-      <div className="max-w-7xl mx-auto mb-6">
-        <div className="flex gap-3 w-full md:w-72">
-          <button
-            type="button"
-            onClick={() => handleTypeChange("student")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border transition-all ${
-              attendeeType === "student"
-                ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            <Users size={18} />
-            Athletes
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTypeChange("coach")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border transition-all ${
-              attendeeType === "coach"
-                ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            <UserPlus size={18} />
-            Coaches
-          </button>
-        </div>
-      </div>
+      {/* Controls Card */}
+      <div className="max-w-7xl mx-auto mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4">
 
-      {/* Controls */}
-      <div className="max-w-7xl mx-auto mb-6 flex flex-col gap-4">
-        {/* Row 1: Search, Filter, Sort */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative md:col-span-2">
+        {/* Row 1: Toggle + Sort */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Toggle Athlete / Coach */}
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => handleTypeChange("student")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                attendeeType === "student"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Users size={16} />
+              Athletes
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTypeChange("coach")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                attendeeType === "coach"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <UserPlus size={16} />
+              Coaches
+            </button>
+          </div>
+
+          {/* Search — melebar mengisi sisa ruang */}
+          <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search size={18} className="text-slate-400" />
+              <Search size={16} className="text-slate-400" />
             </div>
             <input
               type="text"
@@ -260,18 +270,23 @@ export default function Recap() {
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
             />
           </div>
+        </div>
 
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Filter size={18} className="text-slate-400" />
+        {/* Row 2: Filter Status + Date Range + Sort */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+
+          {/* Filter Status */}
+          <div className="relative flex-shrink-0 sm:w-48">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Filter size={15} className="text-slate-400" />
             </div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm appearance-none cursor-pointer font-medium text-slate-600"
+              className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-600"
             >
               <option value="all">All Status</option>
               <option value="hadir_qr">Present (QR)</option>
@@ -281,44 +296,45 @@ export default function Recap() {
             </select>
           </div>
 
-          <button
-            onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
-            className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 px-4 rounded-2xl shadow-sm transition-all"
-          >
-            <ArrowUpDown size={16} className={sortOrder === "desc" ? "text-blue-600" : "text-slate-400"} />
-            <span className="text-sm">Sort: {sortOrder === "desc" ? "Newest" : "Oldest"}</span>
-          </button>
-        </div>
-
-        {/* Row 2: Date Range */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
-            <CalendarDays size={15} />
-            Date Range
-          </div>
-          <div className="flex flex-1 flex-col sm:flex-row gap-3 w-full">
+          {/* Date Range */}
+          <div className="flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
+              <CalendarDays size={14} />
+              <span className="hidden md:inline">From</span>
+            </div>
             <input
               type="date"
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium text-slate-600 cursor-pointer"
+              className="flex-1 min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
             />
-            <div className="flex items-center text-slate-300 font-bold shrink-0 self-center hidden sm:flex">
-              —
-            </div>
+            <span className="text-slate-300 font-bold shrink-0">—</span>
             <input
               type="date"
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
-              className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium text-slate-600 cursor-pointer"
+              className="flex-1 min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
             />
-            {(dateFrom || dateTo) && (
+          </div>
+
+          {/* Sort + Clear */}
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+              className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-3 px-4 rounded-2xl transition-all text-sm"
+            >
+              <ArrowUpDown size={15} className={sortOrder === "desc" ? "text-blue-600" : "text-slate-400"} />
+              {sortOrder === "desc" ? "Newest" : "Oldest"}
+            </button>
+
+            {hasActiveFilters && (
               <button
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                className="shrink-0 px-4 py-3 bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 font-bold rounded-2xl text-sm transition-all border border-slate-200 hover:border-red-200"
+                onClick={clearAllFilters}
+                className="flex items-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-500 font-bold py-3 px-4 rounded-2xl transition-all text-sm"
               >
+                <X size={15} />
                 Clear
               </button>
             )}

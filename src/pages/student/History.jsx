@@ -122,8 +122,8 @@ export default function History() {
   }
 
   return (
-    // DI SINI KUNCINYA: max-w-6xl w-full agar layout melebar penuh seperti Recap
-    <div className="py-6 font-sans max-w-6xl mx-auto w-full px-2">
+    // DI SINI KUNCINYA: max-w-7xl w-full agar layout melebar penuh seperti Recap
+    <div className="py-6 font-sans max-w-7xl mx-auto w-full px-2">
       {/* Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

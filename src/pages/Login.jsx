@@ -2,15 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "react-hot-toast";
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  Droplets,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -72,8 +64,12 @@ export default function Login() {
       <div className="w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative z-10">
         {/* Header/Logo */}
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-600/30 transform -rotate-3 hover:rotate-0 transition-transform duration-300">
-            <Droplets size={32} className="text-white" />
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-600/30 transform -rotate-3 hover:rotate-0 transition-transform duration-300 overflow-hidden">
+            <img
+              src="/sirip_biru.webp"
+              alt="Siripbiru Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-1">
             Sirip<span className="text-blue-600">biru</span>

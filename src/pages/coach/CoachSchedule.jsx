@@ -11,16 +11,28 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  Zap,
+  CalendarClock,
+  History,
 } from "lucide-react";
+
+const TABS = [
+  { key: "today", label: "Today", icon: Zap },
+  { key: "upcoming", label: "Upcoming", icon: CalendarClock },
+  { key: "past", label: "Past", icon: History },
+];
 
 export default function CoachSchedule() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("today");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+
+  const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -39,47 +51,53 @@ export default function CoachSchedule() {
         setLoading(false);
       }
     };
-
     fetchSessions();
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, activeTab]);
 
-  let processedSessions = [...sessions];
+  // Kelompokkan per tab
+  const grouped = {
+    today: sessions.filter((s) => s.session_date === today),
+    upcoming: sessions.filter((s) => s.session_date > today),
+    past: sessions.filter((s) => s.session_date < today),
+  };
+
+  // Filter & search di dalam tab aktif
+  let processedSessions = [...grouped[activeTab]];
 
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
     processedSessions = processedSessions.filter((s) =>
-      s.name.toLowerCase().includes(query)
+      s.name.toLowerCase().includes(query),
     );
   }
 
   if (filterStatus !== "all") {
     processedSessions = processedSessions.filter((s) =>
-      filterStatus === "active" ? s.is_active === true : s.is_active === false
+      filterStatus === "active" ? s.is_active === true : s.is_active === false,
+    );
+  }
+
+  // Past → urutkan ascending (terlama dulu), today & upcoming tetap desc
+  if (activeTab === "upcoming") {
+    processedSessions.sort((a, b) =>
+      a.session_date.localeCompare(b.session_date),
     );
   }
 
   const totalPages = Math.ceil(processedSessions.length / ITEMS_PER_PAGE);
   const paginatedSessions = processedSessions.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const getDateStyle = (sessionDate) => {
-    if (sessionDate === today) return "text-blue-600 bg-blue-50 border-blue-200";
-    if (sessionDate < today) return "text-slate-400 bg-slate-50 border-slate-200";
-    return "text-emerald-600 bg-emerald-50 border-emerald-200";
-  };
-
-  const getDateLabel = (sessionDate) => {
-    if (sessionDate === today) return "Today";
-    if (sessionDate < today) return "Past";
-    return "Upcoming";
+  const getStatusBadge = (session) => {
+    if (session.is_active)
+      return "bg-emerald-50 text-emerald-600 border-emerald-200";
+    return "bg-slate-50 text-slate-400 border-slate-200";
   };
 
   if (loading) {
@@ -101,7 +119,7 @@ export default function CoachSchedule() {
       />
 
       {/* Header */}
-      <div className="max-w-5xl mx-auto mb-8">
+      <div className="max-w-7xl mx-auto mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
           <CalendarDays className="text-blue-600" size={32} />
           My Schedule
@@ -112,31 +130,27 @@ export default function CoachSchedule() {
       </div>
 
       {/* Summary Cards */}
-      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           {
             label: "Total Sessions",
             value: sessions.length,
             color: "text-blue-600",
-            bg: "bg-blue-50",
           },
           {
             label: "Active Gates",
             value: sessions.filter((s) => s.is_active).length,
             color: "text-emerald-600",
-            bg: "bg-emerald-50",
           },
           {
             label: "Today",
-            value: sessions.filter((s) => s.session_date === today).length,
+            value: grouped.today.length,
             color: "text-amber-600",
-            bg: "bg-amber-50",
           },
           {
             label: "Upcoming",
-            value: sessions.filter((s) => s.session_date > today).length,
+            value: grouped.upcoming.length,
             color: "text-indigo-600",
-            bg: "bg-indigo-50",
           },
         ].map((card) => (
           <div
@@ -153,124 +167,204 @@ export default function CoachSchedule() {
         ))}
       </div>
 
+      {/* TAB BAR */}
+      <div className="max-w-7xl mx-auto mb-6">
+        <div className="flex gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-sm w-fit">
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const count = grouped[key].length;
+            const isActive = activeTab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200
+                  ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  }`}
+              >
+                <Icon size={15} />
+                {label}
+                {/* Badge count */}
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center
+                  ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Controls */}
-      <div className="max-w-5xl mx-auto mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="relative md:col-span-2">
+      <div className="max-w-7xl mx-auto mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search size={18} className="text-slate-400" />
+            <Search size={16} className="text-slate-400" />
           </div>
           <input
             type="text"
             placeholder="Search session by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
           />
         </div>
-        <div className="relative">
+        <div className="relative sm:w-52 flex-shrink-0">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Filter size={18} className="text-slate-400" />
+            <Filter size={16} className="text-slate-400" />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm appearance-none cursor-pointer font-medium text-slate-600"
+            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-600"
           >
-            <option value="all">All Sessions</option>
+            <option value="all">All Status</option>
             <option value="active">Active (Gate Open)</option>
             <option value="closed">Closed</option>
           </select>
         </div>
       </div>
 
-      {/* Session Cards Grid */}
-      <div className="max-w-5xl mx-auto">
+      {/* Session Cards */}
+      <div className="max-w-7xl mx-auto">
+        {/* Empty state */}
         {paginatedSessions.length === 0 && !loading ? (
           <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 py-20 text-center text-slate-400">
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <BookOpen size={32} className="text-slate-300" />
             </div>
-            <p className="font-bold text-slate-600">No sessions found</p>
+            <p className="font-bold text-slate-600">
+              {activeTab === "today" && "No sessions scheduled for today."}
+              {activeTab === "upcoming" && "No upcoming sessions found."}
+              {activeTab === "past" && "No past sessions found."}
+            </p>
             <p className="text-sm mt-1">Try adjusting your search or filter.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {paginatedSessions.map((session) => {
-              const dateObj = new Date(session.session_date);
-              const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
-              const dateFull = dateObj.toLocaleDateString("en-US", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              });
+          <>
+            {/* Tab label kecil di atas grid */}
+            <div className="mb-4 flex items-center gap-2">
+              {activeTab === "today" && (
+                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full text-xs font-bold">
+                  <Zap size={12} />
+                  Sessions happening today
+                </div>
+              )}
+              {activeTab === "upcoming" && (
+                <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full text-xs font-bold">
+                  <CalendarClock size={12} />
+                  Sorted by nearest date
+                </div>
+              )}
+              {activeTab === "past" && (
+                <div className="flex items-center gap-2 text-slate-500 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-bold">
+                  <History size={12} />
+                  Historical sessions
+                </div>
+              )}
+              <span className="text-xs text-slate-400 font-medium ml-auto">
+                {processedSessions.length} session
+                {processedSessions.length !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-              return (
-                <div
-                  key={session.id}
-                  className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 p-6 flex flex-col gap-4 hover:-translate-y-1 transition-transform duration-300"
-                >
-                  {/* Top Row */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paginatedSessions.map((session) => {
+                const dateObj = new Date(session.session_date);
+                const dayName = dateObj.toLocaleDateString("en-US", {
+                  weekday: "long",
+                });
+                const dateFull = dateObj.toLocaleDateString("en-US", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                });
+
+                return (
+                  <div
+                    key={session.id}
+                    className={`bg-white rounded-3xl border p-6 flex flex-col gap-4 hover:-translate-y-1 transition-all duration-300
+                      ${
+                        activeTab === "today"
+                          ? "border-amber-200 shadow-xl shadow-amber-900/5"
+                          : activeTab === "upcoming"
+                            ? "border-indigo-100 shadow-xl shadow-indigo-900/5"
+                            : "border-slate-100 shadow-md shadow-slate-900/3 opacity-80"
+                      }`}
+                  >
+                    {/* Top Row */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0
+                          ${
+                            activeTab === "today"
+                              ? "bg-amber-50 text-amber-500"
+                              : activeTab === "upcoming"
+                                ? "bg-indigo-50 text-indigo-500"
+                                : "bg-slate-50 text-slate-400"
+                          }`}
+                        >
+                          <CalendarDays size={22} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-800 text-base leading-tight">
+                            {session.name}
+                          </h3>
+                          <p className="text-xs text-slate-400 font-medium mt-0.5">
+                            {dayName}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Gate Status Badge */}
                       <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                          session.is_active
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-slate-50 text-slate-400"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex-shrink-0 ${getStatusBadge(session)}`}
+                      >
+                        {session.is_active ? (
+                          <CheckCircle2 size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
+                        {session.is_active ? "Open" : "Closed"}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-50" />
+
+                    {/* Bottom Row */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Clock size={14} className="text-slate-400" />
+                        <span className="font-medium">{dateFull}</span>
+                      </div>
+                      {/* Tab badge per card */}
+                      <span
+                        className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border
+                        ${
+                          activeTab === "today"
+                            ? "text-amber-600 bg-amber-50 border-amber-200"
+                            : activeTab === "upcoming"
+                              ? "text-indigo-600 bg-indigo-50 border-indigo-200"
+                              : "text-slate-400 bg-slate-50 border-slate-200"
                         }`}
                       >
-                        <CalendarDays size={22} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-800 text-base leading-tight">
-                          {session.name}
-                        </h3>
-                        <p className="text-xs text-slate-400 font-medium mt-0.5">
-                          {dayName}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Gate Status Badge */}
-                    <div
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex-shrink-0 ${
-                        session.is_active
-                          ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                          : "bg-slate-50 text-slate-400 border-slate-200"
-                      }`}
-                    >
-                      {session.is_active ? (
-                        <CheckCircle2 size={12} />
-                      ) : (
-                        <XCircle size={12} />
-                      )}
-                      {session.is_active ? "Open" : "Closed"}
+                        {activeTab === "today"
+                          ? "Today"
+                          : activeTab === "upcoming"
+                            ? "Upcoming"
+                            : "Past"}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Divider */}
-                  <div className="border-t border-slate-50" />
-
-                  {/* Bottom Row */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Clock size={14} className="text-slate-400" />
-                      <span className="font-medium">{dateFull}</span>
-                    </div>
-
-                    {/* Date label: Today / Past / Upcoming */}
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${getDateStyle(
-                        session.session_date
-                      )}`}
-                    >
-                      {getDateLabel(session.session_date)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Pagination */}
@@ -290,7 +384,9 @@ export default function CoachSchedule() {
                 <ChevronLeft size={18} />
               </button>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >

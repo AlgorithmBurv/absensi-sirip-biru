@@ -11,16 +11,12 @@ import {
   ClipboardEdit,
   LogOut,
   Menu,
-  X,
-  Droplets,
 } from "lucide-react";
 
 export default function LayoutAdmin() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State false agar di desktop default-nya tertutup (hanya ikon)
-  // dan mendukung efek Hover untuk membuka sementara
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -58,7 +54,6 @@ export default function LayoutAdmin() {
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
-      {/* Overlay untuk mobile saat sidebar dibuka via tombol hamburger */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
@@ -66,7 +61,6 @@ export default function LayoutAdmin() {
         />
       )}
 
-      {/* Sidebar - Tema Gelap ala Student dengan efek Hover di Desktop */}
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
@@ -82,8 +76,12 @@ export default function LayoutAdmin() {
       >
         {/* Logo Area */}
         <div className="h-20 px-6 flex items-center border-b border-white/10">
-          <div className="bg-blue-500 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/30">
-            <Droplets size={22} className="text-white" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/30 overflow-hidden">
+            <img
+              src="/sirip_biru.webp"
+              alt="Siripbiru Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           <span
             className={`ml-3 font-black text-xl tracking-wide whitespace-nowrap transition-opacity duration-300 ${
@@ -113,7 +111,6 @@ export default function LayoutAdmin() {
               <Link
                 key={item.name}
                 to={item.path}
-                // Jika di mobile, tutup sidebar saat menu diklik
                 onClick={() =>
                   window.innerWidth < 1024 && setSidebarOpen(false)
                 }
@@ -167,7 +164,6 @@ export default function LayoutAdmin() {
         {/* Top Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 lg:px-8 flex items-center justify-between z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            {/* Tombol hamburger hanya tampil di layar Mobile saja */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="p-2.5 rounded-xl hover:bg-slate-50 text-slate-500 transition-colors border border-transparent hover:border-slate-100 lg:hidden"
@@ -197,7 +193,7 @@ export default function LayoutAdmin() {
           </div>
         </header>
 
-        {/* Page Content Rendering Area */}
+        {/* Page Content */}
         <main className="flex-1 overflow-y-auto bg-[#f8fafc] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="animate-in fade-in duration-300 h-full">
             <Outlet />
