@@ -1,26 +1,20 @@
 import React, { useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Users,
-  UserPlus,
-  Layers,
+  QrCode,
   CalendarDays,
-  ScanLine,
-  ClipboardList,
-  ClipboardEdit,
   LogOut,
   Menu,
   X,
   Droplets,
+  ClipboardList
 } from "lucide-react";
 
-export default function LayoutAdmin() {
+export default function LayoutCoach() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // State false agar di desktop default-nya tertutup (hanya ikon)
-  // dan mendukung efek Hover untuk membuka sementara
+  
+  // Default false agar otomatis mengecil di desktop (mode hover)
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -28,37 +22,21 @@ export default function LayoutAdmin() {
     navigate("/login");
   };
 
+  // Menu khusus untuk Pelatih
   const menuItems = [
-    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={22} /> },
-    { name: "Classes", path: "/admin/classes", icon: <Layers size={22} /> },
-    { name: "Athletes", path: "/admin/students", icon: <Users size={22} /> },
-    { name: "Coaches", path: "/admin/coaches", icon: <UserPlus size={22} /> },
-    {
-      name: "Sessions",
-      path: "/admin/sessions",
-      icon: <CalendarDays size={22} />,
-    },
-    { name: "Scan QR", path: "/admin/scan", icon: <ScanLine size={22} /> },
-    {
-      name: "Manual Entry",
-      path: "/admin/manual-entry",
-      icon: <ClipboardEdit size={22} />,
-    },
-    {
-      name: "Records",
-      path: "/admin/recap",
-      icon: <ClipboardList size={22} />,
-    },
+    { name: "My QR Pass", path: "/coach", icon: <QrCode size={22} /> },
+    { name: "My Schedule", path: "/coach/schedule", icon: <CalendarDays size={22} /> },
+    { name: "Attendance Logs", path: "/coach/logs", icon: <ClipboardList size={22} /> },
   ];
 
   const pageTitle =
-    location.pathname === "/admin"
-      ? "Dashboard"
-      : location.pathname.replace("/admin/", "").replace(/-/g, " ");
+    location.pathname === "/coach"
+      ? "My QR Pass"
+      : location.pathname.replace("/coach/", "").replace(/-/g, " ");
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
-      {/* Overlay untuk mobile saat sidebar dibuka via tombol hamburger */}
+      {/* Overlay mobile */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
@@ -66,7 +44,7 @@ export default function LayoutAdmin() {
         />
       )}
 
-      {/* Sidebar - Tema Gelap ala Student dengan efek Hover di Desktop */}
+      {/* Sidebar - Tema Gelap (Deep Oceanic Blue) */}
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
@@ -87,9 +65,7 @@ export default function LayoutAdmin() {
           </div>
           <span
             className={`ml-3 font-black text-xl tracking-wide whitespace-nowrap transition-opacity duration-300 ${
-              sidebarOpen
-                ? "opacity-100"
-                : "opacity-0 lg:group-hover:opacity-100"
+              sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
             }`}
           >
             Sirip<span className="text-blue-400">biru</span>
@@ -97,15 +73,13 @@ export default function LayoutAdmin() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto custom-scrollbar">
           <p
             className={`px-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 transition-opacity duration-300 ${
-              sidebarOpen
-                ? "opacity-100"
-                : "opacity-0 lg:group-hover:opacity-100"
+              sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
             }`}
           >
-            Management
+            Coach Portal
           </p>
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -113,10 +87,7 @@ export default function LayoutAdmin() {
               <Link
                 key={item.name}
                 to={item.path}
-                // Jika di mobile, tutup sidebar saat menu diklik
-                onClick={() =>
-                  window.innerWidth < 1024 && setSidebarOpen(false)
-                }
+                onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)}
                 title={item.name}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 ${
                   isActive
@@ -127,9 +98,7 @@ export default function LayoutAdmin() {
                 <div className="flex-shrink-0">{item.icon}</div>
                 <span
                   className={`font-medium whitespace-nowrap transition-opacity duration-300 ${
-                    sidebarOpen
-                      ? "opacity-100"
-                      : "opacity-0 lg:group-hover:opacity-100"
+                    sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
                   }`}
                 >
                   {item.name}
@@ -139,7 +108,7 @@ export default function LayoutAdmin() {
           })}
         </nav>
 
-        {/* User / Logout Area */}
+        {/* User / Logout Profile Area */}
         <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
@@ -151,9 +120,7 @@ export default function LayoutAdmin() {
             </div>
             <span
               className={`font-medium whitespace-nowrap transition-opacity duration-300 ${
-                sidebarOpen
-                  ? "opacity-100"
-                  : "opacity-0 lg:group-hover:opacity-100"
+                sidebarOpen ? "opacity-100" : "opacity-0 lg:group-hover:opacity-100"
               }`}
             >
               Sign Out
@@ -167,7 +134,7 @@ export default function LayoutAdmin() {
         {/* Top Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 lg:px-8 flex items-center justify-between z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            {/* Tombol hamburger hanya tampil di layar Mobile saja */}
+            {/* Tombol hamburger hanya muncul di Mobile */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="p-2.5 rounded-xl hover:bg-slate-50 text-slate-500 transition-colors border border-transparent hover:border-slate-100 lg:hidden"
@@ -182,23 +149,21 @@ export default function LayoutAdmin() {
           <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
               <p className="text-sm font-bold text-slate-800 leading-tight">
-                Admin User
+                Swim Coach
               </p>
-              <p className="text-xs text-slate-500 font-medium">
-                Administrator
-              </p>
+              <p className="text-xs text-slate-500 font-medium">Instructor</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-blue-600 font-bold overflow-hidden">
               <img
-                src={`https://api.dicebear.com/7.x/initials/svg?seed=Admin&backgroundColor=eff6ff&textColor=2563eb`}
-                alt="Admin avatar"
+                src={`https://api.dicebear.com/7.x/initials/svg?seed=Coach&backgroundColor=eff6ff&textColor=2563eb`}
+                alt="Coach avatar"
               />
             </div>
           </div>
         </header>
 
-        {/* Page Content Rendering Area */}
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto bg-[#f8fafc]">
           <div className="animate-in fade-in duration-300 h-full">
             <Outlet />
           </div>

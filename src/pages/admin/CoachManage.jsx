@@ -8,7 +8,7 @@ import {
   Trash2,
   X,
   Phone,
-  MapPin,
+  Medal,
   User,
   Search,
   Shield,
@@ -16,9 +16,8 @@ import {
   EyeOff,
 } from "lucide-react";
 
-export default function StudentManage() {
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
+export default function CoachManage() {
+  const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // State untuk Modal & Toggle Password
@@ -26,30 +25,27 @@ export default function StudentManage() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [showPassword, setShowPassword] = useState(false); // Tambahan state mata
+  const [showPassword, setShowPassword] = useState(false);
 
   const initialFormState = {
     full_name: "",
-    password: "",
     email: "",
-    nis: "",
-    class_id: "",
-    parent_name: "",
-    age: "",
-    address: "",
+    password: "",
+    specialty: "",
     phone_number: "",
   };
+
   const [form, setForm] = useState(initialFormState);
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: cls } = await supabase.from("classes").select("*");
-    if (cls) setClasses(cls);
+    const { data: coachData, error } = await supabase
+      .from("coaches")
+      .select("*, users(full_name, email)")
+      .order("created_at", { ascending: false });
 
-    const { data: std } = await supabase
-      .from("students")
-      .select("*, classes(name), users(full_name, email)");
-    if (std) setStudents(std);
+    if (coachData) setCoaches(coachData);
+    if (error) toast.error("Failed to load coaches: " + error.message);
     setLoading(false);
   };
 
@@ -62,71 +58,62 @@ export default function StudentManage() {
     setIsEditing(false);
     setCurrentId(null);
     setCurrentUserId(null);
-    setShowPassword(false); // Reset icon mata
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
-  const openEditModal = (s) => {
+  const openEditModal = (c) => {
     setForm({
-      full_name: s.users?.full_name || "",
-      email: s.users?.email || "",
+      full_name: c.users?.full_name || "",
+      email: c.users?.email || "",
       password: "", // Dikosongkan agar admin tidak bingung
-      nis: s.nis,
-      class_id: s.class_id,
-      parent_name: s.parent_name || "",
-      age: s.age || "",
-      address: s.address || "",
-      phone_number: s.phone_number || "",
+      specialty: c.specialty || "",
+      phone_number: c.phone_number || "",
     });
     setIsEditing(true);
-    setCurrentId(s.id);
-    setCurrentUserId(s.user_id);
-    setShowPassword(false); // Reset icon mata
+    setCurrentId(c.id);
+    setCurrentUserId(c.user_id);
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const loadingToast = toast.loading(
-      isEditing
-        ? "Updating record..."
-        : "Creating account & athlete profile...",
+      isEditing ? "Updating coach..." : "Registering new coach..."
     );
 
     try {
       if (isEditing) {
-        // 1. UPDATE USER (Nama Lengkap & Email sekarang bisa diupdate)
+        // 1. UPDATE USER (Nama Lengkap & Email)
         const userUpdateData = {
           full_name: form.full_name,
           email: form.email,
         };
-        // Jika admin mengisi field password, maka ikut diupdate
+        // Jika form password diisi, ikut diupdate
         if (form.password) userUpdateData.password = form.password;
 
         const { error: userError } = await supabase
           .from("users")
           .update(userUpdateData)
           .eq("id", currentUserId);
+
         if (userError) throw userError;
 
-        // 2. UPDATE STUDENT
-        const { error: studentError } = await supabase
-          .from("students")
+        // 2. UPDATE COACH
+        const { error: coachError } = await supabase
+          .from("coaches")
           .update({
-            nis: form.nis,
-            class_id: form.class_id,
-            parent_name: form.parent_name,
+            specialty: form.specialty,
             phone_number: form.phone_number,
-            address: form.address,
-            age: form.age ? parseInt(form.age) : null,
           })
           .eq("id", currentId);
 
-        if (studentError) throw studentError;
+        if (coachError) throw coachError;
 
-        toast.success("Information updated successfully", { id: loadingToast });
+        toast.success("Coach information updated!", { id: loadingToast });
       } else {
-        // 1. INSERT USER BARU
+        // 1. INSERT USER BARU (Role: coach)
         const { data: newUser, error: userError } = await supabase
           .from("users")
           .insert([
@@ -134,41 +121,32 @@ export default function StudentManage() {
               email: form.email,
               password: form.password,
               full_name: form.full_name,
-              role: "student",
+              role: "coach",
             },
           ])
           .select()
           .single();
 
         if (userError)
-          throw new Error(
-            "Gagal membuat User. Pastikan email belum terdaftar. (" +
-              userError.message +
-              ")",
-          );
+          throw new Error("Gagal membuat User. Mungkin email sudah terdaftar.");
 
-        // 2. INSERT STUDENT BARU
-        const { error: studentError } = await supabase.from("students").insert([
+        // 2. INSERT COACH BARU
+        const { error: coachError } = await supabase.from("coaches").insert([
           {
-            nis: form.nis,
-            class_id: form.class_id,
-            parent_name: form.parent_name,
-            phone_number: form.phone_number,
-            address: form.address,
-            qr_token: uuidv4(),
             user_id: newUser.id,
-            age: form.age ? parseInt(form.age) : null,
+            specialty: form.specialty,
+            phone_number: form.phone_number,
+            qr_token: `token_coach_${uuidv4()}`,
           },
         ]);
 
-        if (studentError) {
+        if (coachError) {
+          // Rollback jika gagal
           await supabase.from("users").delete().eq("id", newUser.id);
-          throw studentError;
+          throw coachError;
         }
 
-        toast.success("Account & Athlete registered successfully", {
-          id: loadingToast,
-        });
+        toast.success("Coach registered successfully!", { id: loadingToast });
       }
 
       setIsModalOpen(false);
@@ -178,19 +156,16 @@ export default function StudentManage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (
-      !confirm(
-        "Are you sure you want to permanently delete this athlete's record?",
-      )
-    )
+  const handleDelete = async (userId) => {
+    if (!confirm("Are you sure you want to permanently delete this coach?"))
       return;
-    const loadingToast = toast.loading("Deleting record...");
 
-    const { error } = await supabase.from("students").delete().eq("id", id);
+    const loadingToast = toast.loading("Deleting record...");
+    // Menghapus user akan otomatis menghapus data coach karena ON DELETE CASCADE di SQL
+    const { error } = await supabase.from("users").delete().eq("id", userId);
 
     if (!error) {
-      toast.success("Record deleted successfully", { id: loadingToast });
+      toast.success("Coach deleted successfully", { id: loadingToast });
       fetchData();
     } else {
       toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
@@ -208,48 +183,43 @@ export default function StudentManage() {
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Athlete Registry
+            Coach Registry
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Manage student profiles, parent contact, and QR identifiers.
+            Manage swimming instructors and their contact information.
           </p>
         </div>
         <button
           onClick={openAddModal}
-          title="Click to register a new athlete"
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
           <UserPlus size={18} />
-          New Registration
+          Register Coach
         </button>
       </div>
 
       {/* Table Section */}
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
-          <h2 className="font-bold text-slate-800">Data Inventory</h2>
-          <span
-            title="Total registered athletes"
-            className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold"
-          >
-            {students.length} Athletes
+          <h2 className="font-bold text-slate-800">Instructors List</h2>
+          <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
+            {coaches.length} Coaches
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
                 <th className="px-6 py-4">Identity</th>
-                <th className="px-6 py-4">Parent / Guardian</th>
-                <th className="px-6 py-4">Contact & Address</th>
+                <th className="px-6 py-4">Specialty & Contact</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {students.map((s) => (
+              {coaches.map((c) => (
                 <tr
-                  key={s.id}
+                  key={c.id}
                   className="hover:bg-blue-50/30 transition-colors group"
                 >
                   <td className="px-6 py-4">
@@ -259,53 +229,36 @@ export default function StudentManage() {
                       </div>
                       <div>
                         <div className="font-bold text-slate-800">
-                          {s.users?.full_name || "No Name Found"}
+                          {c.users?.full_name || "Unknown Name"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">
-                          NIS:{" "}
-                          <span className="font-mono bg-slate-100 px-1 rounded">
-                            {s.nis}
-                          </span>
-                        </div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mt-1">
-                          {s.classes?.name}
+                          {c.users?.email}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-semibold text-slate-700">
-                      {s.parent_name || "N/A"}
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                      <Medal size={14} className="text-amber-500" />
+                      {c.specialty || "General Instructor"}
                     </div>
-                    <div className="text-xs text-slate-400">
-                      {s.age ? `${s.age} yrs old` : ""}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-1.5">
-                      <Phone size={14} className="text-slate-400" />{" "}
-                      {s.phone_number || "-"}
-                    </div>
-                    <div
-                      className="flex items-center gap-1.5 text-xs text-slate-500 truncate max-w-[200px]"
-                      title={s.address}
-                    >
-                      <MapPin size={14} className="text-slate-400" />{" "}
-                      {s.address || "-"}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Phone size={14} className="text-slate-400" />
+                      {c.phone_number || "-"}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <button
-                        onClick={() => openEditModal(s)}
-                        title="Edit student information"
+                        onClick={() => openEditModal(c)}
+                        title="Edit coach info"
                         className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button
-                        onClick={() => handleDelete(s.id)}
-                        title="Delete student record"
+                        onClick={() => handleDelete(c.user_id)}
+                        title="Delete coach"
                         className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"
                       >
                         <Trash2 size={16} />
@@ -315,21 +268,14 @@ export default function StudentManage() {
                 </tr>
               ))}
 
-              {students.length === 0 && !loading && (
+              {coaches.length === 0 && !loading && (
                 <tr>
-                  <td
-                    colSpan="4"
-                    className="px-6 py-16 text-center text-slate-400"
-                  >
+                  <td colSpan="3" className="px-6 py-16 text-center text-slate-400">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search size={32} className="text-slate-300" />
                     </div>
-                    <p className="font-bold text-slate-600">
-                      No athletes found
-                    </p>
-                    <p className="text-sm mt-1">
-                      Start by adding a new registration.
-                    </p>
+                    <p className="font-bold text-slate-600">No coaches found</p>
+                    <p className="text-sm mt-1">Register a coach to get started.</p>
                   </td>
                 </tr>
               )}
@@ -343,25 +289,22 @@ export default function StudentManage() {
       {/* ========================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 py-10 overflow-y-auto">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto">
-            {/* Modal Header */}
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto">
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit2 size={24} /> : <UserPlus size={24} />}
                 <h3 className="text-xl font-bold tracking-tight text-slate-800">
-                  {isEditing ? "Edit Athlete Data" : "New Registration"}
+                  {isEditing ? "Edit Coach Data" : "New Coach Registration"}
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                title="Close window"
                 className="p-2 bg-white rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 shadow-sm border border-slate-100 transition-all"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Modal Body / Form */}
             <form onSubmit={handleSubmit} className="p-8">
               {/* SECTION 1: ACCOUNT CREDENTIALS */}
               <div className="mb-8">
@@ -371,23 +314,20 @@ export default function StudentManage() {
                     Account Credentials
                   </h4>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
-                  <div className="space-y-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
+                  <div className="space-y-1.5 md:col-span-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Student Full Name
+                      Coach Full Name
                     </label>
                     <input
                       required
-                      placeholder="e.g. John Doe"
+                      placeholder="e.g. Coach Budi"
                       value={form.full_name}
-                      onChange={(e) =>
-                        setForm({ ...form, full_name: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     />
                   </div>
-
-                  {/* EMAIL - Sekarang bebas diedit */}
+                  
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                       Email Address
@@ -395,24 +335,16 @@ export default function StudentManage() {
                     <input
                       required
                       type="email"
-                      placeholder="student@mail.com"
+                      placeholder="coach@mail.com"
                       value={form.email}
-                      onChange={(e) =>
-                        setForm({ ...form, email: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     />
                   </div>
 
-                  {/* PASSWORD - Dengan Toggle Mata */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Password{" "}
-                      {isEditing && (
-                        <span className="text-slate-400 normal-case ml-1 font-normal">
-                          (Leave blank to keep)
-                        </span>
-                      )}
+                      Password {isEditing && <span className="text-slate-400 normal-case ml-1 font-normal">(Leave blank to keep)</span>}
                     </label>
                     <div className="relative">
                       <input
@@ -420,126 +352,51 @@ export default function StudentManage() {
                         required={!isEditing}
                         placeholder="••••••••"
                         value={form.password}
-                        onChange={(e) =>
-                          setForm({ ...form, password: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
-                        title={showPassword ? "Hide password" : "Show password"}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600"
                       >
-                        {showPassword ? (
-                          <EyeOff size={18} />
-                        ) : (
-                          <Eye size={18} />
-                        )}
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* SECTION 2: STUDENT DETAILS */}
+              {/* SECTION 2: COACH DETAILS */}
               <div>
                 <div className="flex items-center gap-2 mb-4 text-slate-800">
                   <User size={16} className="text-blue-500" />
                   <h4 className="font-bold uppercase tracking-wider text-xs">
-                    Athlete Profile
+                    Professional Profile
                   </h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Identity Number (NIS)
+                      Specialty / Role
                     </label>
                     <input
                       required
-                      placeholder="e.g. 2024001"
-                      value={form.nis}
-                      onChange={(e) =>
-                        setForm({ ...form, nis: e.target.value })
-                      }
+                      placeholder="e.g. Senior Freestyle Coach"
+                      value={form.specialty}
+                      onChange={(e) => setForm({ ...form, specialty: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
                     />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Class Level
-                    </label>
-                    <select
-                      required
-                      value={form.class_id}
-                      onChange={(e) =>
-                        setForm({ ...form, class_id: e.target.value })
-                      }
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
-                    >
-                      <option value="">-- Select Class --</option>
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Parent / Guardian Name
-                    </label>
-                    <input
-                      placeholder="Guardian full name"
-                      value={form.parent_name}
-                      onChange={(e) =>
-                        setForm({ ...form, parent_name: e.target.value })
-                      }
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Age (Years)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 15"
-                      value={form.age}
-                      onChange={(e) =>
-                        setForm({ ...form, age: e.target.value })
-                      }
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
-                    />
-                  </div>
-
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                       Contact Number
                     </label>
                     <input
+                      required
                       placeholder="+62 812..."
                       value={form.phone_number}
-                      onChange={(e) =>
-                        setForm({ ...form, phone_number: e.target.value })
-                      }
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Complete Home Address
-                    </label>
-                    <input
-                      placeholder="Street name, building, city..."
-                      value={form.address}
-                      onChange={(e) =>
-                        setForm({ ...form, address: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
                     />
                   </div>
@@ -557,14 +414,9 @@ export default function StudentManage() {
                 </button>
                 <button
                   type="submit"
-                  title={
-                    isEditing
-                      ? "Save updated information"
-                      : "Save new athlete to database"
-                  }
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  {isEditing ? "Save Changes" : "Confirm Registration"}
+                  {isEditing ? "Save Changes" : "Register Coach"}
                 </button>
               </div>
             </form>

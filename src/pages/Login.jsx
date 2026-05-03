@@ -1,121 +1,177 @@
-import React, { useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { supabase } from "../utils/supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { toast, Toaster } from "react-hot-toast";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Droplets,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMsg('');
+    const loadingToast = toast.loading("Authenticating...");
 
     try {
-      // Ambil user berdasarkan email saja dulu
+      // Catatan: Sesuai rancangan SQL terbaru Anda yang menggunakan Plaintext,
+      // kita langsung mencocokkan email dan password di query Supabase.
       const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .eq("password", password) // Pencocokan Plaintext
         .single();
 
       if (userError || !userData) {
-        throw new Error("Email atau password salah.");
+        throw new Error("Invalid email address or password.");
       }
 
-      // Verifikasi password via fungsi pgcrypto di Supabase
-      const { data: verified, error: verifyError } = await supabase
-        .rpc('verify_password', { 
-          input_password: password, 
-          stored_hash: userData.password 
-        });
-
-      if (verifyError || !verified) {
-        throw new Error("Email atau password salah.");
-      }
-
-      // Jangan simpan password hash ke localStorage!
+      // Hapus password dari object sebelum disimpan ke localStorage untuk keamanan
       const { password: _, ...safeUser } = userData;
-      localStorage.setItem('user_session', JSON.stringify(safeUser));
+      localStorage.setItem("user_session", JSON.stringify(safeUser));
 
-      if (userData.role === 'admin') navigate('/admin');
-      else if (userData.role === 'student') navigate('/student');
-      else throw new Error("Role tidak dikenali.");
+      toast.success("Welcome back!", { id: loadingToast });
 
+      // Redirect berdasarkan role
+      setTimeout(() => {
+        if (userData.role === "admin") navigate("/admin");
+        else if (userData.role === "student") navigate("/student");
+        else throw new Error("Unrecognized user role.");
+      }, 500);
     } catch (error) {
-      setErrorMsg('Gagal masuk: ' + error.message);
-    } finally {
+      toast.error(error.message, { id: loadingToast });
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-cyan-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-      
-      {/* Dekorasi Background */}
-      <div className="absolute top-10 left-10 w-64 h-64 bg-cyan-400 rounded-full mix-blend-screen filter blur-[80px] opacity-30 animate-pulse"></div>
-      <div className="absolute bottom-10 right-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-[#0a192f] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      <Toaster
+        position="top-center"
+        toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }}
+      />
 
-      {/* Card Form Login */}
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-[0_8px_32px_0_rgba(0,36,90,0.37)] z-10">
-        
-        {/* Header & Logo */}
-        <div className="text-center mb-8">
-          <div className="bg-gradient-to-br from-cyan-400 to-blue-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg rotate-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white -rotate-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-            </svg>
+      {/* Ambient Background Glow */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600 rounded-full mix-blend-screen filter blur-[120px] opacity-30 animate-pulse"></div>
+      <div
+        className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-400 rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-pulse"
+        style={{ animationDelay: "2s" }}
+      ></div>
+
+      {/* Login Card */}
+      <div className="w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative z-10">
+        {/* Header/Logo */}
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-600/30 transform -rotate-3 hover:rotate-0 transition-transform duration-300">
+            <Droplets size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-wide">
-            SIRIP<span className="text-cyan-400">BIRU</span>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-1">
+            Sirip<span className="text-blue-600">biru</span>
           </h1>
-          <p className="text-cyan-100/70 mt-2 text-sm font-medium">Portal Absensi Perenang</p>
+          <p className="text-slate-500 text-sm font-medium tracking-wide">
+            Athlete Attendance Portal
+          </p>
         </div>
 
-        {/* Notifikasi Error */}
-        {errorMsg && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-100 px-4 py-3 rounded-xl mb-6 text-sm text-center backdrop-blur-sm">
-            {errorMsg}
-          </div>
-        )}
-
-        {/* Form Input */}
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-cyan-100 mb-2">Email Address</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-cyan-500/30 text-white placeholder-cyan-100/30 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all"
-              placeholder="atlet@siripbiru.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-cyan-100 mb-2">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-cyan-500/30 text-white placeholder-cyan-100/30 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all"
-              placeholder="••••••••"
-            />
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="space-y-5">
+          {/* Email Input */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+              Email Address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Mail size={18} className="text-slate-400" />
+              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-700 font-medium"
+                placeholder="athlete@siripbiru.com"
+              />
+            </div>
           </div>
 
+          {/* Password Input */}
+          <div className="space-y-1.5 pb-2">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock size={18} className="text-slate-400" />
+              </div>
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-700 font-medium"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/30 transform transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full py-4 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
           >
-            {loading ? 'Memproses...' : 'Masuk (Dive In)'}
+            {loading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                Signing In...
+              </>
+            ) : (
+              <>
+                Sign In
+                <ArrowRight
+                  size={18}
+                  className="group-hover:translate-x-1 transition-transform"
+                />
+              </>
+            )}
           </button>
         </form>
+
+        {/* Footer info */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-slate-400">
+            Having trouble accessing your account?
+            <br />
+            <span className="text-blue-600 font-medium cursor-pointer hover:underline">
+              Contact Club Administrator
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   );

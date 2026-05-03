@@ -1,39 +1,60 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../../utils/supabaseClient';
+import React, { useEffect, useState } from "react";
+import { supabase } from "../../utils/supabaseClient";
+import {
+  Search,
+  Filter,
+  ArrowUpDown,
+  CalendarDays,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Info,
+} from "lucide-react";
 
 export default function History() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // States untuk Search, Filter, Sort, & Pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        // 1. Ambil data user dari localStorage (Hasil login manual)
-        const savedUser = localStorage.getItem('user_session');
+        setLoading(true);
+        const savedUser = localStorage.getItem("user_session");
         if (!savedUser) return;
-        
+
         const user = JSON.parse(savedUser);
 
-        // 2. Cari student_id berdasarkan user_id (Bukan profile_id)
+        // Cari student_id berdasarkan user_id
         const { data: student } = await supabase
-          .from('students')
-          .select('id')
-          .eq('user_id', user.id) // Sesuai kolom di tabel students yang baru
+          .from("students")
+          .select("id")
+          .eq("user_id", user.id)
           .single();
 
-        if (!student) throw new Error("Data siswa tidak ditemukan");
+        if (!student) throw new Error("Athlete data not found");
 
-        // 3. Ambil riwayat absen berdasarkan student_id
+        // Ambil riwayat absen berdasarkan student_id
         const { data: attendanceLogs, error } = await supabase
-          .from('attendance_logs')
-          .select(`
-            id,
-            status,
-            scanned_at,
+          .from("attendance_logs")
+          .select(
+            `
+            id, status, scanned_at,
             sessions ( name, session_date )
-          `)
-          .eq('student_id', student.id)
-          .order('scanned_at', { ascending: false });
+          `,
+          )
+          .eq("student_id", student.id)
+          .order("scanned_at", { ascending: false });
 
         if (error) throw error;
         setLogs(attendanceLogs || []);
@@ -47,75 +68,248 @@ export default function History() {
     fetchHistory();
   }, []);
 
-  // Fungsi helper untuk menerjemahkan status dan warna badge
-  const formatStatus = (status) => {
-    switch (status) {
-      case 'hadir_qr': return { label: 'Hadir (QR)', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
-      case 'hadir_manual': return { label: 'Hadir (Manual)', color: 'bg-blue-100 text-blue-700 border-blue-200' };
-      case 'izin': return { label: 'Izin', color: 'bg-amber-100 text-amber-700 border-amber-200' };
-      case 'sakit': return { label: 'Sakit', color: 'bg-red-100 text-red-700 border-red-200' };
-      default: return { label: status, color: 'bg-slate-100 text-slate-700 border-slate-200' };
-    }
+  // Reset pagination ke halaman 1 jika filter/search/sort berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, sortOrder]);
+
+  // Memproses Data: Search -> Filter -> Sort
+  let processedLogs = [...logs];
+
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    processedLogs = processedLogs.filter((log) =>
+      log.sessions?.name?.toLowerCase().includes(query),
+    );
+  }
+
+  if (filterStatus !== "all") {
+    processedLogs = processedLogs.filter((log) => log.status === filterStatus);
+  }
+
+  processedLogs.sort((a, b) => {
+    const dateA = new Date(a.scanned_at).getTime();
+    const dateB = new Date(b.scanned_at).getTime();
+    return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+  });
+
+  // Pagination Logic
+  const totalPages = Math.ceil(processedLogs.length / ITEMS_PER_PAGE);
+  const paginatedLogs = processedLogs.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
+
+  // Helper untuk Status Badge
+  const getStatusStyle = (status) => {
+    if (status.includes("hadir"))
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    if (status === "izin")
+      return "bg-amber-100 text-amber-700 border-amber-200";
+    if (status === "sakit") return "bg-red-100 text-red-700 border-red-200";
+    return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
-  if (loading) return <div className="text-center py-10 text-cyan-600 animate-pulse">Memuat riwayat menyelam...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">
+          Loading your history...
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="py-6">
-      <h2 className="text-2xl font-bold text-slate-800 mb-2">Riwayat Latihan</h2>
-      <p className="text-slate-500 text-sm mb-6">Catatan kehadiran kamu di kolam renang.</p>
+    // DI SINI KUNCINYA: max-w-6xl w-full agar layout melebar penuh seperti Recap
+    <div className="py-6 font-sans max-w-6xl mx-auto w-full px-2">
+      {/* Header */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+            <ClipboardList className="text-blue-600" size={32} />
+            Attendance History
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">
+            Track your swimming practice records and overview.
+          </p>
+        </div>
+        <div className="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl text-sm font-bold border border-blue-100 shadow-sm w-fit">
+          Total Logs: {processedLogs.length}
+        </div>
+      </div>
 
-      {logs.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-100">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+      {/* Controls Section (Search, Filter, Sort) */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Search Input */}
+        <div className="relative md:col-span-2">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={18} className="text-slate-400" />
           </div>
-          <p className="text-slate-600 font-medium">Belum ada riwayat absensi</p>
-          <p className="text-slate-400 text-sm mt-1">Kamu belum pernah melakukan scan kehadiran.</p>
+          <input
+            type="text"
+            placeholder="Search session name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+          />
         </div>
-      ) : (
-        <div className="space-y-4 mb-20"> {/* Tambah margin bawah agar tidak tertutup nav */}
-          {logs.map((log) => {
-            const statusStyle = formatStatus(log.status);
-            const scanDate = new Date(log.scanned_at);
-            const timeString = scanDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            const dateString = new Date(log.sessions?.session_date).toLocaleDateString('id-ID', {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            });
 
-            return (
-              <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                
-                {/* Info Sesi */}
-                <div>
-                  <h3 className="font-semibold text-slate-800">{log.sessions?.name || 'Sesi Tidak Diketahui'}</h3>
-                  <div className="flex items-center text-xs text-slate-500 mt-1 space-x-2">
-                    <span className="flex items-center">
-                      <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {dateString}
-                    </span>
-                    <span className="flex items-center">
-                      <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {timeString} WIB
-                    </span>
-                  </div>
-                </div>
-
-                {/* Badge Status */}
-                <div className={`px-3 py-1.5 rounded-lg border text-xs font-bold text-center w-fit ${statusStyle.color}`}>
-                  {statusStyle.label}
-                </div>
-              </div>
-            );
-          })}
+        {/* Filter */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Filter size={18} className="text-slate-400" />
+          </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm appearance-none cursor-pointer font-medium text-slate-600"
+          >
+            <option value="all">All Status</option>
+            <option value="hadir_qr">Present (QR)</option>
+            <option value="hadir_manual">Present (Manual)</option>
+            <option value="izin">Excused</option>
+            <option value="sakit">Sick</option>
+          </select>
         </div>
-      )}
+
+        {/* Sort */}
+        <button
+          onClick={() =>
+            setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+          }
+          className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3.5 px-4 rounded-2xl shadow-sm transition-all text-sm"
+        >
+          <ArrowUpDown
+            size={18}
+            className={
+              sortOrder === "desc" ? "text-blue-600" : "text-slate-400"
+            }
+          />
+          {sortOrder === "desc" ? "Newest" : "Oldest"}
+        </button>
+      </div>
+
+      {/* TABLE SECTION - Menggunakan desain mirip Recap */}
+      <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[400px] mb-8">
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left border-collapse min-w-[600px]">
+            <thead>
+              <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
+                <th className="px-6 py-4">Timestamp</th>
+                <th className="px-6 py-4">Session Name</th>
+                <th className="px-6 py-4 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {paginatedLogs.map((log) => {
+                const scanDateObj = new Date(log.scanned_at);
+                const dateStr = scanDateObj.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                const timeStr = scanDateObj.toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                const sessionDate = new Date(
+                  log.sessions?.session_date,
+                ).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+
+                return (
+                  <tr
+                    key={log.id}
+                    className="hover:bg-blue-50/30 transition-colors group"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <div className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+                          <CalendarDays size={14} className="text-blue-500" />
+                          {dateStr}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                          <Clock size={14} />
+                          {timeStr}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-slate-800 text-base">
+                        {log.sessions?.name || "Unknown Session"}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {sessionDate}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span
+                        className={`inline-block px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(log.status)}`}
+                      >
+                        {log.status.replace("_", " ")}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {/* Empty State dalam Tabel */}
+              {paginatedLogs.length === 0 && !loading && (
+                <tr>
+                  <td
+                    colSpan="3"
+                    className="px-6 py-20 text-center text-slate-400"
+                  >
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search size={32} className="text-slate-300" />
+                    </div>
+                    <p className="font-bold text-slate-600 text-lg">
+                      No records found
+                    </p>
+                    <p className="text-sm mt-1">
+                      Try adjusting your search or filter options.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        {totalPages > 0 && (
+          <div className="p-4 border-t border-slate-50 flex items-center justify-between bg-slate-50/50">
+            <span className="text-xs font-medium text-slate-500 pl-2">
+              Showing Page{" "}
+              <span className="font-bold text-slate-800">{currentPage}</span> of{" "}
+              <span className="font-bold text-slate-800">{totalPages}</span>
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

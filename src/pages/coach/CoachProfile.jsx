@@ -1,24 +1,26 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "../../utils/supabaseClient";
-import { QRCodeSVG } from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 import { toast, Toaster } from "react-hot-toast";
+import html2canvas from "html2canvas";
 import { 
-  Download, User, MapPin, Phone, 
+  Download, User, Phone, Medal,
   ShieldCheck, Contact, Edit3, X, Save,
   Mail, Lock, Eye, EyeOff
 } from "lucide-react";
 
-export default function Profile() {
-  const [studentData, setStudentData] = useState(null);
+export default function CoachProfile() {
+  const [coachData, setCoachData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const qrRef = useRef(null);
+  
+  const cardRef = useRef(null);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [editForm, setEditForm] = useState({
-    full_name: '', email: '', password: '', parent_name: '', age: '', phone_number: '', address: ''
+    full_name: '', email: '', password: '', specialty: '', phone_number: ''
   });
 
   const fetchProfile = useCallback(async () => {
@@ -28,18 +30,18 @@ export default function Profile() {
 
       const user = JSON.parse(savedUser);
 
+      // Ambil data dari tabel coaches dan gabungkan dengan users
       const { data, error } = await supabase
-        .from("students")
+        .from("coaches")
         .select(`
-          nis, qr_token, parent_name, age, address, phone_number, 
-          users ( full_name, email ), 
-          classes ( name )
+          id, qr_token, specialty, phone_number, 
+          users ( full_name, email )
         `)
         .eq("user_id", user.id)
         .single();
 
       if (error) throw error;
-      setStudentData(data);
+      setCoachData(data);
     } catch (err) {
       toast.error("Failed to load profile data. Please contact admin.");
     } finally {
@@ -51,62 +53,50 @@ export default function Profile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  // Handle Download QR
-  const handleDownloadQR = () => {
+  // Handle Download Seluruh Card
+  const handleDownloadQR = async () => {
     const loadingToast = toast.loading("Preparing your Digital Pass...");
-    const svgElement = qrRef.current?.querySelector("svg");
     
-    if (!svgElement) {
-      toast.error("QR Code not ready yet.", { id: loadingToast });
+    if (!cardRef.current) {
+      toast.error("Digital Pass is not ready.", { id: loadingToast });
       return;
     }
 
     try {
-      const svgData = new XMLSerializer().serializeToString(svgElement);
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      img.onload = () => {
-        const padding = 32;
-        canvas.width = img.width + padding * 2;
-        canvas.height = img.height + padding * 2;
-        
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, padding, padding);
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: null, 
+        logging: false
+      });
 
-        const pngUrl = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.download = `Siripbiru_Pass_${studentData?.nis || "Athlete"}.png`;
-        link.href = pngUrl;
-        link.click();
-        
-        toast.success("Digital Pass downloaded successfully!", { id: loadingToast });
-      };
+      const pngUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `Siripbiru_Coach_${coachData.users?.full_name?.replace(/\s+/g, '_') || "Pass"}.png`;
+      link.href = pngUrl;
+      link.click();
       
-      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+      toast.success("Instructor Pass downloaded successfully!", { id: loadingToast });
     } catch (error) {
-      toast.error("Failed to download image.", { id: loadingToast });
+      console.error("html2canvas error:", error);
+      toast.error("Failed to capture image. Please try again.", { id: loadingToast });
     }
   };
 
-  // Handle Edit Open
   const openEditModal = () => {
     setEditForm({
-      full_name: studentData.users?.full_name || '',
-      email: studentData.users?.email || '',
-      password: '', // Dikosongkan, hanya diisi jika ingin ubah password
-      parent_name: studentData.parent_name || '',
-      age: studentData.age || '',
-      phone_number: studentData.phone_number || '',
-      address: studentData.address || ''
+      full_name: coachData.users?.full_name || '',
+      email: coachData.users?.email || '',
+      password: '',
+      specialty: coachData.specialty || '',
+      phone_number: coachData.phone_number || ''
     });
     setShowPassword(false);
     setIsEditModalOpen(true);
   };
 
-  // Handle Edit Submit
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -115,7 +105,6 @@ export default function Profile() {
     try {
       const user = JSON.parse(localStorage.getItem("user_session"));
 
-      // 1. Update data akun (users table)
       const userUpdateData = { 
         full_name: editForm.full_name,
         email: editForm.email
@@ -131,26 +120,21 @@ export default function Profile() {
       
       if (userError) throw userError;
 
-      // 2. Update detail profil (students table)
-      const { error: studentError } = await supabase
-        .from("students")
+      const { error: coachError } = await supabase
+        .from("coaches")
         .update({
-          parent_name: editForm.parent_name,
-          age: editForm.age ? parseInt(editForm.age) : null,
-          phone_number: editForm.phone_number,
-          address: editForm.address
+          specialty: editForm.specialty,
+          phone_number: editForm.phone_number
         })
         .eq("user_id", user.id);
 
-      if (studentError) throw studentError;
+      if (coachError) throw coachError;
 
       toast.success("Profile updated successfully!", { id: loadingToast });
       setIsEditModalOpen(false);
       
-      // Update UI dengan mengambil data terbaru
       fetchProfile();
       
-      // Update session storage secara manual untuk nama dan email
       user.full_name = editForm.full_name;
       user.email = editForm.email;
       localStorage.setItem("user_session", JSON.stringify(user));
@@ -166,19 +150,19 @@ export default function Profile() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Loading Digital Pass...</p>
+        <p className="text-slate-500 font-medium animate-pulse">Loading Instructor Pass...</p>
       </div>
     );
   }
 
-  if (!studentData) {
+  if (!coachData) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6">
         <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
           <Contact size={32} />
         </div>
         <h2 className="text-xl font-bold text-slate-800 mb-2">Profile Not Found</h2>
-        <p className="text-slate-500 text-sm max-w-xs">Your account has not been linked to an athlete profile. Please contact the administrator.</p>
+        <p className="text-slate-500 text-sm max-w-xs">Your account has not been linked to a coach profile. Please contact the administrator.</p>
       </div>
     );
   }
@@ -188,17 +172,20 @@ export default function Profile() {
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '16px', fontWeight: '500' } }} />
 
       <div className="text-center mb-8 flex flex-col items-center">
-        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Digital Pass</h1>
-        <p className="text-slate-500 text-sm mt-1">Present this QR code for attendance scanning.</p>
+        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Instructor Pass</h1>
+        <p className="text-slate-500 text-sm mt-1">Present this card for attendance scanning.</p>
       </div>
 
       {/* ============================================== */}
-      {/* KARTU IDENTITAS DIGITAL (DIGITAL ID CARD)      */}
+      {/* KARTU IDENTITAS DIGITAL COACH                  */}
       {/* ============================================== */}
       <div className="w-full max-w-sm relative group">
-        <div className="absolute -inset-1 bg-gradient-to-b from-blue-600 to-cyan-400 rounded-[2.5rem] blur-lg opacity-20 group-hover:opacity-40 transition duration-500"></div>
+        <div className="absolute -inset-1 bg-gradient-to-b from-blue-600 to-emerald-400 rounded-[2.5rem] blur-lg opacity-20 group-hover:opacity-40 transition duration-500"></div>
         
-        <div className="relative bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
+        <div 
+          ref={cardRef} 
+          className="relative bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col"
+        >
           
           <div className="bg-[#0a192f] p-6 relative overflow-hidden">
             <ShieldCheck size={120} className="absolute -right-6 -top-6 text-white/5 rotate-12" />
@@ -212,25 +199,22 @@ export default function Profile() {
               </h2>
               
               <h3 className="text-xl font-bold text-white mb-1 leading-tight">
-                {studentData.users?.full_name || "Unknown Athlete"}
+                {coachData.users?.full_name || "Unknown Instructor"}
               </h3>
               <div className="text-cyan-300 text-[10px] font-medium tracking-widest uppercase mb-2">
-                {studentData.users?.email}
+                {coachData.users?.email}
               </div>
-              <div className="inline-block px-3 py-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full text-blue-200 text-xs font-bold tracking-wider uppercase mt-1">
-                {studentData.classes?.name || "No Class"}
+              <div className="inline-block px-4 py-1 bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/30 rounded-full text-emerald-300 text-xs font-bold tracking-wider uppercase mt-1">
+                INSTRUCTOR
               </div>
             </div>
           </div>
 
           <div className="p-8 flex flex-col items-center bg-white relative z-10">
-            <div 
-              ref={qrRef} 
-              className="p-3 bg-white rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.08)] border border-slate-50 transform group-hover:scale-105 transition-transform duration-500"
-            >
-              {studentData.qr_token ? (
-                <QRCodeSVG
-                  value={studentData.qr_token}
+            <div className="p-3 bg-white rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.08)] border border-slate-50">
+              {coachData.qr_token ? (
+                <QRCodeCanvas
+                  value={coachData.qr_token}
                   size={180}
                   level={"H"}
                   includeMargin={false}
@@ -243,40 +227,30 @@ export default function Profile() {
               )}
             </div>
             <p className="mt-5 font-mono text-slate-400 text-xs tracking-widest font-bold">
-              ID: {studentData.nis}
+              SCAN TO CHECK-IN
             </p>
           </div>
 
           <div className="bg-slate-50 p-6 border-t border-slate-100 flex flex-col gap-3">
             <div className="flex items-center gap-3 text-sm">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                <User size={14} />
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                <Medal size={14} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Guardian / Age</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Specialty / Role</p>
                 <p className="text-slate-700 font-medium truncate">
-                  {studentData.parent_name || "-"} <span className="text-slate-400 font-normal">({studentData.age ? `${studentData.age} yo` : '-'})</span>
+                  {coachData.specialty || "-"} 
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 text-sm">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
                 <Phone size={14} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Emergency Contact</p>
-                <p className="text-slate-700 font-medium truncate">{studentData.phone_number || "-"}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-sm">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
-                <MapPin size={14} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Home Address</p>
-                <p className="text-slate-700 font-medium truncate">{studentData.address || "-"}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</p>
+                <p className="text-slate-700 font-medium truncate">{coachData.phone_number || "-"}</p>
               </div>
             </div>
           </div>
@@ -324,19 +298,6 @@ export default function Profile() {
             <div className="overflow-y-auto p-6 custom-scrollbar">
               <form id="editProfileForm" onSubmit={handleEditSubmit} className="space-y-6">
                 
-                {/* READ ONLY FIELDS (Info Admin) */}
-                <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">NIS (Read Only)</label>
-                    <input disabled value={studentData.nis} className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Class (Read Only)</label>
-                    <input disabled value={studentData.classes?.name || '-'} className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none" />
-                  </div>
-                </div>
-
-                {/* SECTION 1: ACCOUNT CREDENTIALS */}
                 <div className="space-y-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
                   <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                     <ShieldCheck size={16} /> Login Credentials
@@ -362,10 +323,9 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* SECTION 2: PERSONAL INFO */}
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2 ml-1">
-                    <User size={16} /> Personal Information
+                    <User size={16} /> Professional Info
                   </h4>
 
                   <div className="space-y-1.5">
@@ -373,25 +333,14 @@ export default function Profile() {
                     <input required value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Parent/Guardian</label>
-                      <input required value={editForm.parent_name} onChange={e => setEditForm({...editForm, parent_name: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Age</label>
-                      <input type="number" required value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Specialty / Role</label>
+                    <input required value={editForm.specialty} onChange={e => setEditForm({...editForm, specialty: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
                     <input required placeholder="+62..." value={editForm.phone_number} onChange={e => setEditForm({...editForm, phone_number: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Complete Address</label>
-                    <textarea required rows="3" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm resize-none"></textarea>
                   </div>
                 </div>
               </form>
