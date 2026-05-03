@@ -1,26 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { toast, Toaster } from "react-hot-toast";
-import * as XLSX from "xlsx";
 import {
   ClipboardList,
   Search,
   Filter,
-  Download,
+  CalendarDays,
+  Clock,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
-  User,
-  CalendarDays,
-  Clock,
-  Users,
-  UserPlus,
 } from "lucide-react";
 
-export default function Recap() {
+export default function CoachLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [attendeeType, setAttendeeType] = useState("student");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -30,78 +24,56 @@ export default function Recap() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  const fetchLogs = async (type) => {
-    setLoading(true);
-    try {
-      if (type === "student") {
-        const { data, error } = await supabase
-          .from("attendance_logs")
-          .select(`
-            id, status, scanned_at,
-            students ( nis, users ( full_name ) ),
-            sessions ( name, session_date )
-          `)
-          .not("student_id", "is", null)
-          .order("scanned_at", { ascending: false });
-        if (error) throw error;
-        setLogs(data || []);
-      } else {
-        const { data, error } = await supabase
-          .from("attendance_logs")
-          .select(`
-            id, status, scanned_at,
-            coaches ( specialty, users ( full_name ) ),
-            sessions ( name, session_date )
-          `)
-          .not("coach_id", "is", null)
-          .order("scanned_at", { ascending: false });
-        if (error) throw error;
-        setLogs(data || []);
-      }
-    } catch {
-      toast.error("Failed to fetch records");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchLogs(attendeeType);
-  }, [attendeeType]);
+    const fetchLogs = async () => {
+      setLoading(true);
+      try {
+        const savedUser = localStorage.getItem("user_session");
+        if (!savedUser) throw new Error("Session expired.");
+        const user = JSON.parse(savedUser);
+
+        // Ambil coach_id berdasarkan user_id
+        const { data: coachData, error: coachError } = await supabase
+          .from("coaches")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (coachError || !coachData) throw new Error("Coach profile not found.");
+
+        // Ambil attendance logs milik coach ini
+        const { data, error } = await supabase
+          .from("attendance_logs")
+          .select(`
+            id, status, scanned_at,
+            sessions ( name, session_date )
+          `)
+          .eq("coach_id", coachData.id)
+          .order("scanned_at", { ascending: false });
+
+        if (error) throw error;
+        setLogs(data || []);
+      } catch (err) {
+        toast.error("Failed to load logs: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogs();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, sortOrder, attendeeType, dateFrom, dateTo]);
-
-  const handleTypeChange = (type) => {
-    setAttendeeType(type);
-    setSearchQuery("");
-    setFilterStatus("all");
-    setSortOrder("desc");
-    setDateFrom("");
-    setDateTo("");
-    setLogs([]);
-  };
+  }, [searchQuery, filterStatus, sortOrder, dateFrom, dateTo]);
 
   let processedLogs = [...logs];
 
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
-    processedLogs = processedLogs.filter((log) => {
-      if (attendeeType === "student") {
-        return (
-          log.students?.nis?.toLowerCase().includes(query) ||
-          log.students?.users?.full_name?.toLowerCase().includes(query) ||
-          log.sessions?.name?.toLowerCase().includes(query)
-        );
-      } else {
-        return (
-          log.coaches?.users?.full_name?.toLowerCase().includes(query) ||
-          log.coaches?.specialty?.toLowerCase().includes(query) ||
-          log.sessions?.name?.toLowerCase().includes(query)
-        );
-      }
-    });
+    processedLogs = processedLogs.filter((log) =>
+      log.sessions?.name?.toLowerCase().includes(query)
+    );
   }
 
   if (filterStatus !== "all") {
@@ -128,55 +100,8 @@ export default function Recap() {
   const totalPages = Math.ceil(processedLogs.length / ITEMS_PER_PAGE);
   const paginatedLogs = processedLogs.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
-
-  const handleExportExcel = () => {
-    const loadingToast = toast.loading("Generating Excel file...");
-    try {
-      const excelData = processedLogs.map((log) => {
-        const dateObj = new Date(log.scanned_at);
-        if (attendeeType === "student") {
-          return {
-            "Scan Date": dateObj.toLocaleDateString("en-GB"),
-            Time: dateObj.toLocaleTimeString("en-GB"),
-            NIS: log.students?.nis || "-",
-            "Athlete Name": log.students?.users?.full_name || "Unknown",
-            Session: log.sessions?.name || "-",
-            Status: log.status.toUpperCase().replace("_", " "),
-          };
-        } else {
-          return {
-            "Scan Date": dateObj.toLocaleDateString("en-GB"),
-            Time: dateObj.toLocaleTimeString("en-GB"),
-            "Coach Name": log.coaches?.users?.full_name || "Unknown",
-            Specialty: log.coaches?.specialty || "-",
-            Session: log.sessions?.name || "-",
-            Status: log.status.toUpperCase().replace("_", " "),
-          };
-        }
-      });
-
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
-      worksheet["!cols"] = [
-        { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 30 }, { wch: 20 },
-      ];
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        attendeeType === "student" ? "Athlete Recap" : "Coach Recap"
-      );
-      XLSX.writeFile(
-        workbook,
-        `Siripbiru_${attendeeType === "student" ? "Athlete" : "Coach"}_Recap_${new Date().getTime()}.xlsx`
-      );
-      toast.success("Export to Excel successful!", { id: loadingToast });
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to export data to Excel", { id: loadingToast });
-    }
-  };
 
   const getStatusStyle = (status) => {
     if (status.includes("hadir")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -184,6 +109,23 @@ export default function Recap() {
     if (status === "sakit") return "bg-red-100 text-red-700 border-red-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
+
+  // Summary counts
+  const totalHadir = logs.filter((l) => l.status.includes("hadir")).length;
+  const totalIzin = logs.filter((l) => l.status === "izin").length;
+  const totalSakit = logs.filter((l) => l.status === "sakit").length;
+  const totalAlpa = logs.filter((l) => l.status === "alpa").length;
+
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">
+          Loading attendance logs...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans">
@@ -193,58 +135,36 @@ export default function Recap() {
       />
 
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <ClipboardList className="text-blue-600" size={32} />
-            Attendance Records
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Review, filter, and export overall attendance history.
-          </p>
-        </div>
-        <button
-          onClick={handleExportExcel}
-          disabled={processedLogs.length === 0}
-          className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download size={18} />
-          Export to Excel
-        </button>
+      <div className="max-w-5xl mx-auto mb-8">
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+          <ClipboardList className="text-blue-600" size={32} />
+          Attendance Logs
+        </h1>
+        <p className="text-slate-500 mt-1 text-sm">
+          Your personal attendance history across all sessions.
+        </p>
       </div>
 
-      {/* Toggle Athlete / Coach */}
-      <div className="max-w-7xl mx-auto mb-6">
-        <div className="flex gap-3 w-full md:w-72">
-          <button
-            type="button"
-            onClick={() => handleTypeChange("student")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border transition-all ${
-              attendeeType === "student"
-                ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-            }`}
+      {/* Summary Cards */}
+      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: "Present", value: totalHadir, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Excused", value: totalIzin, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Sick", value: totalSakit, color: "text-red-500", bg: "bg-red-50" },
+          { label: "Absent", value: totalAlpa, color: "text-slate-500", bg: "bg-slate-50" },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="bg-white rounded-3xl p-5 shadow-xl shadow-blue-900/5 border border-slate-100 flex flex-col gap-1"
           >
-            <Users size={18} />
-            Athletes
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTypeChange("coach")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border transition-all ${
-              attendeeType === "coach"
-                ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            <UserPlus size={18} />
-            Coaches
-          </button>
-        </div>
+            <div className={`text-3xl font-black ${card.color}`}>{card.value}</div>
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{card.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Controls */}
-      <div className="max-w-7xl mx-auto mb-6 flex flex-col gap-4">
+      <div className="max-w-5xl mx-auto mb-6 flex flex-col gap-4">
         {/* Row 1: Search, Filter, Sort */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative md:col-span-2">
@@ -253,11 +173,7 @@ export default function Recap() {
             </div>
             <input
               type="text"
-              placeholder={
-                attendeeType === "student"
-                  ? "Search by name, NIS, or session..."
-                  : "Search by name, specialty, or session..."
-              }
+              placeholder="Search session name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
@@ -274,10 +190,10 @@ export default function Recap() {
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm appearance-none cursor-pointer font-medium text-slate-600"
             >
               <option value="all">All Status</option>
-              <option value="hadir_qr">Present (QR)</option>
               <option value="hadir_manual">Present (Manual)</option>
               <option value="izin">Excused (Izin)</option>
               <option value="sakit">Sick (Sakit)</option>
+              <option value="alpa">Absent (Alpa)</option>
             </select>
           </div>
 
@@ -304,9 +220,7 @@ export default function Recap() {
               onChange={(e) => setDateFrom(e.target.value)}
               className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium text-slate-600 cursor-pointer"
             />
-            <div className="flex items-center text-slate-300 font-bold shrink-0 self-center hidden sm:flex">
-              —
-            </div>
+            <div className="hidden sm:flex items-center text-slate-300 font-bold shrink-0 self-center">—</div>
             <input
               type="date"
               value={dateTo}
@@ -327,25 +241,20 @@ export default function Recap() {
       </div>
 
       {/* Table */}
-      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[500px]">
+      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[400px]">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
-          <h2 className="font-bold text-slate-800">
-            {attendeeType === "student" ? "Athlete" : "Coach"} Record Logs
-          </h2>
+          <h2 className="font-bold text-slate-800">Log History</h2>
           <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
             {processedLogs.length} Records Found
           </span>
         </div>
 
         <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
                 <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">
-                  {attendeeType === "student" ? "Athlete Identity" : "Coach Identity"}
-                </th>
-                <th className="px-6 py-4">Session Context</th>
+                <th className="px-6 py-4">Session</th>
                 <th className="px-6 py-4 text-right">Status</th>
               </tr>
             </thead>
@@ -358,56 +267,27 @@ export default function Recap() {
                 const timeStr = scanDateObj.toLocaleTimeString("en-US", {
                   hour: "2-digit", minute: "2-digit",
                 });
+                const sessionDate = new Date(log.sessions?.session_date).toLocaleDateString("en-US", {
+                  month: "short", day: "numeric", year: "numeric",
+                });
 
                 return (
                   <tr key={log.id} className="hover:bg-blue-50/30 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <div className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
-                          <CalendarDays size={14} className="text-blue-500" />
-                          {dateStr}
-                        </div>
-                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                          <Clock size={14} />
-                          {timeStr}
-                        </div>
+                      <div className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+                        <CalendarDays size={14} className="text-blue-500" />
+                        {dateStr}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                        <Clock size={14} />
+                        {timeStr}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                          <User size={16} />
-                        </div>
-                        <div>
-                          {attendeeType === "student" ? (
-                            <>
-                              <div className="font-bold text-slate-800 text-sm">
-                                {log.students?.users?.full_name || "Unknown"}
-                              </div>
-                              <div className="text-xs text-slate-500 font-mono mt-0.5">
-                                {log.students?.nis || "-"}
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="font-bold text-slate-800 text-sm">
-                                {log.coaches?.users?.full_name || "Unknown"}
-                              </div>
-                              <div className="text-xs text-slate-500 mt-0.5">
-                                {log.coaches?.specialty || "-"}
-                              </div>
-                            </>
-                          )}
-                        </div>
+                      <div className="font-semibold text-slate-800 text-sm">
+                        {log.sessions?.name || "Unknown Session"}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-700 text-sm">
-                        {log.sessions?.name || "-"}
-                      </div>
-                      <div className="text-xs text-blue-500 font-medium mt-0.5">
-                        {log.sessions?.session_date || "-"}
-                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">{sessionDate}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className={`inline-block px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(log.status)}`}>
@@ -420,7 +300,7 @@ export default function Recap() {
 
               {paginatedLogs.length === 0 && !loading && (
                 <tr>
-                  <td colSpan="4" className="px-6 py-20 text-center text-slate-400">
+                  <td colSpan="3" className="px-6 py-20 text-center text-slate-400">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search size={32} className="text-slate-300" />
                     </div>
@@ -434,7 +314,7 @@ export default function Recap() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 0 && (
+        {totalPages > 1 && (
           <div className="p-4 border-t border-slate-50 flex items-center justify-between bg-slate-50/50">
             <span className="text-xs font-medium text-slate-500 pl-2">
               Showing Page{" "}

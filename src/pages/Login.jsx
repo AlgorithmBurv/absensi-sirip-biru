@@ -26,29 +26,26 @@ export default function Login() {
     const loadingToast = toast.loading("Authenticating...");
 
     try {
-      // Catatan: Sesuai rancangan SQL terbaru Anda yang menggunakan Plaintext,
-      // kita langsung mencocokkan email dan password di query Supabase.
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("*")
         .eq("email", email)
-        .eq("password", password) // Pencocokan Plaintext
+        .eq("password", password)
         .single();
 
       if (userError || !userData) {
         throw new Error("Invalid email address or password.");
       }
 
-      // Hapus password dari object sebelum disimpan ke localStorage untuk keamanan
       const { password: _, ...safeUser } = userData;
       localStorage.setItem("user_session", JSON.stringify(safeUser));
 
       toast.success("Welcome back!", { id: loadingToast });
 
-      // Redirect berdasarkan role
       setTimeout(() => {
         if (userData.role === "admin") navigate("/admin");
         else if (userData.role === "student") navigate("/student");
+        else if (userData.role === "coach") navigate("/coach");
         else throw new Error("Unrecognized user role.");
       }, 500);
     } catch (error) {
@@ -132,7 +129,6 @@ export default function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loading}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
-                title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>

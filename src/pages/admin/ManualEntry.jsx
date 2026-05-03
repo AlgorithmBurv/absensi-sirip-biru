@@ -8,14 +8,18 @@ import {
   AlertCircle,
   Save,
   Activity,
+  Users,
+  UserPlus,
 } from "lucide-react";
 
 export default function ManualEntry() {
   const [sessions, setSessions] = useState([]);
   const [students, setStudents] = useState([]);
+  const [coaches, setCoaches] = useState([]);
+  const [attendeeType, setAttendeeType] = useState("student"); // "student" | "coach"
   const [form, setForm] = useState({
     session_id: "",
-    student_id: "",
+    attendee_id: "",
     status: "hadir_manual",
   });
   const [loading, setLoading] = useState(true);
@@ -25,24 +29,29 @@ export default function ManualEntry() {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Ambil sesi aktif
         const { data: sess, error: sessError } = await supabase
           .from("sessions")
           .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
-        // Ambil data siswa
         const { data: std, error: stdError } = await supabase
           .from("students")
           .select("id, nis, users(full_name), classes(name)")
           .order("nis");
 
+        const { data: cch, error: cchError } = await supabase
+          .from("coaches")
+          .select("id, specialty, users(full_name)")
+          .order("created_at");
+
         if (sessError) throw sessError;
         if (stdError) throw stdError;
+        if (cchError) throw cchError;
 
         if (sess) setSessions(sess);
         if (std) setStudents(std);
+        if (cch) setCoaches(cch);
       } catch (error) {
         toast.error("Failed to load data: " + error.message);
       } finally {
@@ -52,10 +61,16 @@ export default function ManualEntry() {
     loadData();
   }, []);
 
+  // Reset attendee_id setiap kali tipe berubah
+  const handleTypeChange = (type) => {
+    setAttendeeType(type);
+    setForm((prev) => ({ ...prev, attendee_id: "" }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.session_id || !form.student_id) {
-      toast.error("Please select both session and athlete.");
+    if (!form.session_id || !form.attendee_id) {
+      toast.error("Please select both session and attendee.");
       return;
     }
 
@@ -63,48 +78,59 @@ export default function ManualEntry() {
     const loadingToast = toast.loading("Saving attendance record...");
 
     try {
-      // 1. CEK DULU APAKAH DATA SUDAH ADA
-      const { data: existingLog, error: checkError } = await supabase
-        .from("attendance_logs")
-        .select("id")
-        .eq("session_id", form.session_id)
-        .eq("student_id", form.student_id)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existingLog) {
-        // 2a. JIKA SUDAH ADA -> UPDATE (TIMPA DATA LAMA)
-        const { error: updateError } = await supabase
+      if (attendeeType === "student") {
+        // --- ALUR STUDENT (sama seperti sebelumnya) ---
+        const { data: existingLog, error: checkError } = await supabase
           .from("attendance_logs")
-          .update({
-            status: form.status,
-            scanned_at: new Date().toISOString(), // Perbarui waktu absensinya juga
-          })
-          .eq("id", existingLog.id);
+          .select("id")
+          .eq("session_id", form.session_id)
+          .eq("student_id", form.attendee_id)
+          .maybeSingle();
 
-        if (updateError) throw updateError;
-        toast.success("Attendance updated (Overwritten)!", {
-          id: loadingToast,
-        });
+        if (checkError) throw checkError;
+
+        if (existingLog) {
+          const { error: updateError } = await supabase
+            .from("attendance_logs")
+            .update({ status: form.status, scanned_at: new Date().toISOString() })
+            .eq("id", existingLog.id);
+          if (updateError) throw updateError;
+          toast.success("Attendance updated (Overwritten)!", { id: loadingToast });
+        } else {
+          const { error: insertError } = await supabase
+            .from("attendance_logs")
+            .insert([{ session_id: form.session_id, student_id: form.attendee_id, status: form.status }]);
+          if (insertError) throw insertError;
+          toast.success("Attendance saved successfully!", { id: loadingToast });
+        }
       } else {
-        // 2b. JIKA BELUM ADA -> INSERT BARU
-        const { error: insertError } = await supabase
+        // --- ALUR COACH ---
+        const { data: existingLog, error: checkError } = await supabase
           .from("attendance_logs")
-          .insert([
-            {
-              session_id: form.session_id,
-              student_id: form.student_id,
-              status: form.status,
-            },
-          ]);
+          .select("id")
+          .eq("session_id", form.session_id)
+          .eq("coach_id", form.attendee_id)
+          .maybeSingle();
 
-        if (insertError) throw insertError;
-        toast.success("Attendance saved successfully!", { id: loadingToast });
+        if (checkError) throw checkError;
+
+        if (existingLog) {
+          const { error: updateError } = await supabase
+            .from("attendance_logs")
+            .update({ status: form.status, scanned_at: new Date().toISOString() })
+            .eq("id", existingLog.id);
+          if (updateError) throw updateError;
+          toast.success("Coach attendance updated (Overwritten)!", { id: loadingToast });
+        } else {
+          const { error: insertError } = await supabase
+            .from("attendance_logs")
+            .insert([{ session_id: form.session_id, coach_id: form.attendee_id, status: form.status }]);
+          if (insertError) throw insertError;
+          toast.success("Coach attendance saved!", { id: loadingToast });
+        }
       }
 
-      // Reset hanya student_id agar admin bisa lanjut absen siswa lain di sesi yang sama
-      setForm((prev) => ({ ...prev, student_id: "" }));
+      setForm((prev) => ({ ...prev, attendee_id: "" }));
     } catch (error) {
       toast.error(error.message, { id: loadingToast });
     } finally {
@@ -116,9 +142,7 @@ export default function ManualEntry() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">
-          Loading data...
-        </p>
+        <p className="text-slate-500 font-medium animate-pulse">Loading data...</p>
       </div>
     );
   }
@@ -130,30 +154,62 @@ export default function ManualEntry() {
         toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }}
       />
 
-      {/* Header Section */}
+      {/* Header */}
       <div className="max-w-3xl mx-auto mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
           <ClipboardEdit className="text-blue-600" size={32} />
           Manual Entry
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Record or overwrite attendance manually (Present, Sick, Excused,
-          Absent).
+          Record or overwrite attendance manually for Athletes or Coaches.
         </p>
       </div>
 
       <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden p-6 md:p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Warning Banner if no sessions active */}
+
+          {/* No active session warning */}
           {sessions.length === 0 && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-amber-700">
               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
               <p className="text-sm font-medium">
-                No active sessions found. Please open a session first in the{" "}
-                <b>Sessions</b> menu.
+                No active sessions found. Please open a session first in the <b>Sessions</b> menu.
               </p>
             </div>
           )}
+
+          {/* Toggle: Athlete / Coach */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+              Attendee Type
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleTypeChange("student")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border transition-all ${
+                  attendeeType === "student"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <Users size={18} />
+                Athlete
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTypeChange("coach")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border transition-all ${
+                  attendeeType === "coach"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <UserPlus size={18} />
+                Coach
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Session Selection */}
@@ -164,9 +220,7 @@ export default function ManualEntry() {
               <select
                 required
                 value={form.session_id}
-                onChange={(e) =>
-                  setForm({ ...form, session_id: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, session_id: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700 cursor-pointer shadow-inner"
               >
                 <option value="">-- Select Gate / Session --</option>
@@ -178,7 +232,7 @@ export default function ManualEntry() {
               </select>
             </div>
 
-            {/* Status Selection (Ditambahkan ALPA) */}
+            {/* Status Selection */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-1.5">
                 <Activity size={14} /> Attendance Status
@@ -197,28 +251,34 @@ export default function ManualEntry() {
             </div>
           </div>
 
-          {/* Student Selection */}
+          {/* Athlete / Coach Selection */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-              <UserCheck size={14} /> Athlete Profile
+              <UserCheck size={14} /> {attendeeType === "student" ? "Athlete Profile" : "Coach Profile"}
             </label>
             <select
               required
-              value={form.student_id}
-              onChange={(e) => setForm({ ...form, student_id: e.target.value })}
+              value={form.attendee_id}
+              onChange={(e) => setForm({ ...form, attendee_id: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700 cursor-pointer shadow-inner"
             >
-              <option value="">-- Select Athlete --</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.users?.full_name || "Unknown"} — NIS: {s.nis} (
-                  {s.classes?.name || "No Class"})
-                </option>
-              ))}
+              <option value="">
+                -- Select {attendeeType === "student" ? "Athlete" : "Coach"} --
+              </option>
+              {attendeeType === "student"
+                ? students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.users?.full_name || "Unknown"} — NIS: {s.nis} ({s.classes?.name || "No Class"})
+                    </option>
+                  ))
+                : coaches.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.users?.full_name || "Unknown"} — {c.specialty || "General Instructor"}
+                    </option>
+                  ))}
             </select>
             <p className="text-xs text-slate-400 font-medium ml-1 mt-1">
-              *If the athlete is already checked in, submitting this form will
-              overwrite their previous status.
+              *If already checked in, submitting will overwrite their previous status.
             </p>
           </div>
 
