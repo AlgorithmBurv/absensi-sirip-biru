@@ -22,6 +22,10 @@ export default function CoachProfile() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
+  // NEW: State untuk 2 metode input foto pelatih
+  const [photoUploadMethod, setPhotoUploadMethod] = useState("url"); // "url" | "file"
+  const [photoFile, setPhotoFile] = useState(null);
+
   const [editForm, setEditForm] = useState({
     full_name: '', email: '', password: '', specialty: '', phone_number: '',
     nickname: '', role_title: '', experience_desc: '', age: '', nationality: 'Indonesia',
@@ -113,6 +117,8 @@ export default function CoachProfile() {
       achievements: coachData.achievements?.length > 0 ? coachData.achievements : ['']
     });
     setShowPassword(false);
+    setPhotoUploadMethod("url");
+    setPhotoFile(null);
     setIsEditModalOpen(true);
   };
 
@@ -130,6 +136,35 @@ export default function CoachProfile() {
     const loadingToast = toast.loading("Saving changes...");
 
     const cleanAchievements = editForm.achievements.filter(a => a.trim() !== "");
+
+    let finalPhotoUrl = editForm.photo_url;
+
+    // Jika metode upload "file" dan ada file yang dipilih, upload ke Supabase Storage
+    if (photoUploadMethod === "file" && photoFile) {
+      try {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `coaches/${fileName}`;
+
+        // Upload ke bucket "images"
+        const { error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, photoFile);
+
+        if (uploadError) throw uploadError;
+
+        // Ambil URL public
+        const { data: urlData } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+
+        finalPhotoUrl = urlData.publicUrl;
+      } catch (err) {
+        toast.error("Failed to upload image: " + err.message, { id: loadingToast });
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     try {
       const user = JSON.parse(localStorage.getItem("user_session"));
@@ -159,7 +194,7 @@ export default function CoachProfile() {
           experience_desc: editForm.experience_desc,
           age: editForm.age ? parseInt(editForm.age) : null,
           nationality: editForm.nationality,
-          photo_url: editForm.photo_url,
+          photo_url: finalPhotoUrl, // Menggunakan finalPhotoUrl
           achievements: cleanAchievements
         })
         .eq("user_id", user.id);
@@ -322,7 +357,7 @@ export default function CoachProfile() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-6 bg-blue-50/50 rounded-[24px] border border-blue-100">
                     <div className="md:col-span-2">
-                      <label className={labelCls}>Full Name (System & Card)</label>
+                      <label className={labelCls}>Full Name </label>
                       <input required value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} className={inputCls} />
                     </div>
                     <div>
@@ -333,7 +368,7 @@ export default function CoachProfile() {
                       </div>
                     </div>
                     <div>
-                      <label className={labelCls}>Password <span className="text-slate-400 normal-case font-normal">(Leave blank to keep)</span></label>
+                      <label className={labelCls}>Password</label>
                       <div className="relative">
                         <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type={showPassword ? "text" : "password"} value={editForm.password} onChange={e => setEditForm({...editForm, password: e.target.value})} placeholder="******" className={`${inputCls} pl-11 pr-12`} />
@@ -349,15 +384,15 @@ export default function CoachProfile() {
                 <div>
                   <div className="flex items-center gap-2 mb-4 text-slate-800">
                     <LayoutTemplate size={18} className="text-blue-500" />
-                    <h4 className="font-bold uppercase tracking-wider text-xs">Public Profile (Landing Page)</h4>
+                    <h4 className="font-bold uppercase tracking-wider text-xs">Public Profile </h4>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                     <div>
-                      <label className={labelCls}>Nickname (Display Name)</label>
+                      <label className={labelCls}>Nickname</label>
                       <input required placeholder="e.g. Coach Budi" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>Role / Title</label>
+                      <label className={labelCls}>Role </label>
                       <input required placeholder="e.g. Head Coach" value={editForm.role_title} onChange={e => setEditForm({...editForm, role_title: e.target.value})} className={inputCls} />
                     </div>
                     <div>
@@ -378,10 +413,69 @@ export default function CoachProfile() {
                         <input placeholder="Indonesia" value={editForm.nationality} onChange={e => setEditForm({...editForm, nationality: e.target.value})} className={inputCls} />
                       </div>
                     </div>
-                    <div>
-                      <label className={labelCls}>Profile Photo URL</label>
-                      <input placeholder="https://..." value={editForm.photo_url} onChange={e => setEditForm({...editForm, photo_url: e.target.value})} className={inputCls} />
+                    
+                    {/* NEW: 2 Metode Input Foto Pelatih */}
+                    <div className="md:col-span-2">
+                      <div className="flex gap-6 mb-2">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="photo_method" 
+                            className="w-4 h-4 accent-blue-600"
+                            checked={photoUploadMethod === 'url'} 
+                            onChange={() => setPhotoUploadMethod('url')} 
+                          /> 
+                          Link / URL
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="photo_method" 
+                            className="w-4 h-4 accent-blue-600"
+                            checked={photoUploadMethod === 'file'} 
+                            onChange={() => setPhotoUploadMethod('file')} 
+                          /> 
+                          Upload File
+                        </label>
+                      </div>
+
+                      {photoUploadMethod === 'url' ? (
+                        <div>
+                          <label className={labelCls}>Profile Photo URL</label>
+                          <input 
+                            placeholder="https://..." 
+                            value={editForm.photo_url} 
+                            onChange={(e) => setEditForm({ ...editForm, photo_url: e.target.value })} 
+                            className={inputCls} 
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className={labelCls}>Pilih Foto dari Perangkat</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={e => setPhotoFile(e.target.files[0])} 
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 shadow-sm"
+                          />
+                        </div>
+                      )}
+
+                      {/* Preview Image Dinamis untuk Pelatih */}
+                      <div className="mt-3 flex gap-4">
+                        {(photoUploadMethod === 'url' && editForm.photo_url) && (
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative shrink-0">
+                            <img src={editForm.photo_url} alt="preview" className="w-full h-full object-cover" onError={e => { e.target.style.display = "none"; }} />
+                          </div>
+                        )}
+                        {(photoUploadMethod === 'file' && photoFile) && (
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative shrink-0">
+                            <img src={URL.createObjectURL(photoFile)} alt="preview file" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
                     </div>
+
                     <div className="md:col-span-2">
                       <label className={labelCls}>Experience Description</label>
                       <textarea required rows={2} placeholder="Brief bio and experience..." value={editForm.experience_desc} onChange={e => setEditForm({...editForm, experience_desc: e.target.value})} className={`${inputCls} resize-none`} />

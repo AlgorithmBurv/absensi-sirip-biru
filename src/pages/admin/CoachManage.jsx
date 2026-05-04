@@ -23,10 +23,24 @@ export default function CoachManage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // NEW: State untuk 2 metode input foto pelatih
+  const [photoUploadMethod, setPhotoUploadMethod] = useState("url"); // "url" | "file"
+  const [photoFile, setPhotoFile] = useState(null);
+
   const initialFormState = {
-    full_name: "", email: "", password: "", specialty: "", phone_number: "",
-    nickname: "", role_title: "", experience_desc: "", age: "", nationality: "Indonesia",
-    photo_url: "", show_on_landing: true, achievements: [""]
+    full_name: "",
+    email: "",
+    password: "",
+    specialty: "",
+    phone_number: "",
+    nickname: "",
+    role_title: "",
+    experience_desc: "",
+    age: "",
+    nationality: "Indonesia",
+    photo_url: "",
+    show_on_landing: true,
+    achievements: [""],
   };
   const [form, setForm] = useState(initialFormState);
 
@@ -42,9 +56,11 @@ export default function CoachManage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const filteredCoaches = coaches.filter(c => {
+  const filteredCoaches = coaches.filter((c) => {
     const q = searchQuery.toLowerCase();
     return (
       c.users?.full_name?.toLowerCase().includes(q) ||
@@ -59,6 +75,8 @@ export default function CoachManage() {
     setCurrentId(null);
     setCurrentUserId(null);
     setShowPassword(false);
+    setPhotoUploadMethod("url");
+    setPhotoFile(null);
     setIsModalOpen(true);
   };
 
@@ -76,12 +94,14 @@ export default function CoachManage() {
       nationality: c.nationality || "Indonesia",
       photo_url: c.photo_url || "",
       show_on_landing: c.show_on_landing ?? true,
-      achievements: c.achievements?.length > 0 ? c.achievements : [""]
+      achievements: c.achievements?.length > 0 ? c.achievements : [""],
     });
     setIsEditing(true);
     setCurrentId(c.id);
     setCurrentUserId(c.user_id);
     setShowPassword(false);
+    setPhotoUploadMethod("url");
+    setPhotoFile(null);
     setIsModalOpen(true);
   };
 
@@ -90,60 +110,117 @@ export default function CoachManage() {
     newAch[index] = value;
     setForm({ ...form, achievements: newAch });
   };
-  const addAchievement = () => setForm({ ...form, achievements: [...form.achievements, ""] });
-  const removeAchievement = (index) => setForm({ ...form, achievements: form.achievements.filter((_, i) => i !== index) });
+  const addAchievement = () =>
+    setForm({ ...form, achievements: [...form.achievements, ""] });
+  const removeAchievement = (index) =>
+    setForm({
+      ...form,
+      achievements: form.achievements.filter((_, i) => i !== index),
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const loadingToast = toast.loading(isEditing ? "Updating data..." : "Registering coach...");
-    const cleanAchievements = form.achievements.filter(a => a.trim() !== "");
+    const loadingToast = toast.loading(
+      isEditing ? "Updating data..." : "Registering coach...",
+    );
+    const cleanAchievements = form.achievements.filter((a) => a.trim() !== "");
+
+    let finalPhotoUrl = form.photo_url;
+
+    // Jika metode upload "file" dan ada file yang dipilih, upload ke Supabase Storage
+    if (photoUploadMethod === "file" && photoFile) {
+      try {
+        const fileExt = photoFile.name.split(".").pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `coaches/${fileName}`;
+
+        // Upload ke bucket "images"
+        const { error: uploadError } = await supabase.storage
+          .from("images")
+          .upload(filePath, photoFile);
+
+        if (uploadError) throw uploadError;
+
+        // Ambil URL public
+        const { data: urlData } = supabase.storage
+          .from("images")
+          .getPublicUrl(filePath);
+
+        finalPhotoUrl = urlData.publicUrl;
+      } catch (err) {
+        toast.error("Failed to upload image: " + err.message, {
+          id: loadingToast,
+        });
+        setSubmitting(false);
+        return;
+      }
+    }
 
     try {
       if (isEditing) {
         const userUpdateData = { full_name: form.full_name, email: form.email };
         if (form.password) userUpdateData.password = form.password;
 
-        const { error: userError } = await supabase.from("users").update(userUpdateData).eq("id", currentUserId);
+        const { error: userError } = await supabase
+          .from("users")
+          .update(userUpdateData)
+          .eq("id", currentUserId);
         if (userError) throw userError;
 
-        const { error: coachError } = await supabase.from("coaches").update({
-          specialty: form.specialty,
-          phone_number: form.phone_number,
-          nickname: form.nickname,
-          role_title: form.role_title,
-          experience_desc: form.experience_desc,
-          age: form.age ? parseInt(form.age) : null,
-          nationality: form.nationality,
-          photo_url: form.photo_url,
-          show_on_landing: form.show_on_landing,
-          achievements: cleanAchievements
-        }).eq("id", currentId);
+        const { error: coachError } = await supabase
+          .from("coaches")
+          .update({
+            specialty: form.specialty,
+            phone_number: form.phone_number,
+            nickname: form.nickname,
+            role_title: form.role_title,
+            experience_desc: form.experience_desc,
+            age: form.age ? parseInt(form.age) : null,
+            nationality: form.nationality,
+            photo_url: finalPhotoUrl, // Simpan URL yang sudah diperbarui
+            show_on_landing: form.show_on_landing,
+            achievements: cleanAchievements,
+          })
+          .eq("id", currentId);
 
         if (coachError) throw coachError;
         toast.success("Coach data updated!", { id: loadingToast });
       } else {
         const { data: newUser, error: userError } = await supabase
           .from("users")
-          .insert([{ email: form.email, password: form.password, full_name: form.full_name, role: "coach" }])
-          .select().single();
+          .insert([
+            {
+              email: form.email,
+              password: form.password,
+              full_name: form.full_name,
+              role: "coach",
+            },
+          ])
+          .select()
+          .single();
 
-        if (userError) throw new Error("Failed to create User. Email might already be registered.");
+        if (userError)
+          throw new Error(
+            "Failed to create User. Email might already be registered.",
+          );
 
-        const { error: coachError } = await supabase.from("coaches").insert([{
-          user_id: newUser.id,
-          specialty: form.specialty,
-          phone_number: form.phone_number,
-          qr_token: `token_coach_${uuidv4()}`,
-          nickname: form.nickname,
-          role_title: form.role_title,
-          experience_desc: form.experience_desc,
-          age: form.age ? parseInt(form.age) : null,
-          nationality: form.nationality,
-          photo_url: form.photo_url,
-          show_on_landing: form.show_on_landing,
-          achievements: cleanAchievements
-        }]);
+        const { error: coachError } = await supabase.from("coaches").insert([
+          {
+            user_id: newUser.id,
+            specialty: form.specialty,
+            phone_number: form.phone_number,
+            qr_token: `token_coach_${uuidv4()}`,
+            nickname: form.nickname,
+            role_title: form.role_title,
+            experience_desc: form.experience_desc,
+            age: form.age ? parseInt(form.age) : null,
+            nationality: form.nationality,
+            photo_url: finalPhotoUrl, // Simpan URL yang sudah diperbarui
+            show_on_landing: form.show_on_landing,
+            achievements: cleanAchievements,
+          },
+        ]);
 
         if (coachError) {
           await supabase.from("users").delete().eq("id", newUser.id);
@@ -161,7 +238,12 @@ export default function CoachManage() {
   };
 
   const handleDelete = async (c) => {
-    if (!window.confirm(`Are you sure you want to delete ${c.users?.full_name}? All related data will be permanently lost.`)) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${c.users?.full_name}? All related data will be permanently lost.`,
+      )
+    )
+      return;
     const loadingToast = toast.loading("Deleting data...");
 
     const { error } = await supabase.from("users").delete().eq("id", c.user_id);
@@ -174,16 +256,26 @@ export default function CoachManage() {
   };
 
   const toggleLandingStatus = async (id, currentStatus) => {
-    const { error } = await supabase.from("coaches").update({ show_on_landing: !currentStatus }).eq("id", id);
+    const { error } = await supabase
+      .from("coaches")
+      .update({ show_on_landing: !currentStatus })
+      .eq("id", id);
     if (!error) {
-      setCoaches(coaches.map(c => c.id === id ? { ...c, show_on_landing: !currentStatus } : c));
+      setCoaches(
+        coaches.map((c) =>
+          c.id === id ? { ...c, show_on_landing: !currentStatus } : c,
+        ),
+      );
       toast.success("Publication status updated");
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] p-4 md:p-10 font-sans text-slate-900 relative">
-      <Toaster position="top-right" toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }}
+      />
 
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -192,8 +284,12 @@ export default function CoachManage() {
             <UserPlus size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Coach Registry</h1>
-            <p className="text-slate-500 text-sm">Manage instructor data and their public profiles.</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Coach Registry
+            </h1>
+            <p className="text-slate-500 text-sm">
+              Manage instructor data and their public profiles.
+            </p>
           </div>
         </div>
         <button
@@ -222,33 +318,54 @@ export default function CoachManage() {
       <div className="max-w-7xl mx-auto bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
           <h2 className="font-bold text-slate-800">Instructor Directory</h2>
-          <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">{filteredCoaches.length} Coaches</span>
+          <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
+            {filteredCoaches.length} Coaches
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Identity</th>
-                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Specialty & Contact</th>
-                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Landing Publication</th>
-                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Identity
+                </th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Specialty & Contact
+                </th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">
+                  Landing Publication
+                </th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredCoaches.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
+                <tr
+                  key={c.id}
+                  className="hover:bg-slate-50/30 transition-colors"
+                >
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 flex-shrink-0 overflow-hidden border border-slate-200">
                         {c.photo_url ? (
-                          <img src={c.photo_url} alt={c.users?.full_name} className="w-full h-full object-cover" />
+                          <img
+                            src={c.photo_url}
+                            alt={c.users?.full_name}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <User size={20} />
                         )}
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800 text-base">{c.users?.full_name || "Unknown"}</div>
-                        <div className="text-xs text-blue-600 font-bold mt-0.5">{c.role_title || "Coach"}</div>
+                        <div className="font-bold text-slate-800 text-base">
+                          {c.users?.full_name || "Unknown"}
+                        </div>
+                        <div className="text-xs text-blue-600 font-bold mt-0.5">
+                          {c.role_title || "Coach"}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -265,22 +382,36 @@ export default function CoachManage() {
                   <td className="px-6 py-5">
                     <div className="flex justify-center">
                       <button
-                        onClick={() => toggleLandingStatus(c.id, c.show_on_landing)}
+                        onClick={() =>
+                          toggleLandingStatus(c.id, c.show_on_landing)
+                        }
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all ${
-                          c.show_on_landing ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                          c.show_on_landing
+                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                         }`}
                       >
-                        {c.show_on_landing ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                        {c.show_on_landing ? (
+                          <CheckCircle2 size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
                         {c.show_on_landing ? "Published" : "Hidden"}
                       </button>
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => openEditModal(c)} className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm">
+                      <button
+                        onClick={() => openEditModal(c)}
+                        className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
+                      >
                         <Edit3 size={16} />
                       </button>
-                      <button onClick={() => handleDelete(c)} className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm">
+                      <button
+                        onClick={() => handleDelete(c)}
+                        className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -289,12 +420,17 @@ export default function CoachManage() {
               ))}
               {filteredCoaches.length === 0 && !loading && (
                 <tr>
-                  <td colSpan="4" className="px-6 py-20 text-center text-slate-400">
+                  <td
+                    colSpan="4"
+                    className="px-6 py-20 text-center text-slate-400"
+                  >
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search size={32} className="text-slate-300" />
                     </div>
                     <p className="font-bold text-slate-600">No coaches found</p>
-                    <p className="text-sm mt-1">No data available or search keyword doesn't match.</p>
+                    <p className="text-sm mt-1">
+                      No data available or search keyword doesn't match.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -307,7 +443,6 @@ export default function CoachManage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 py-10 overflow-y-auto">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto flex flex-col max-h-full">
-
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit3 size={24} /> : <UserPlus size={24} />}
@@ -315,37 +450,83 @@ export default function CoachManage() {
                   {isEditing ? "Edit Coach Data" : "New Coach Registration"}
                 </h3>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 bg-white rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 shadow-sm border border-slate-100 transition-all">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 bg-white rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 shadow-sm border border-slate-100 transition-all"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
               <div className="p-8 overflow-y-auto space-y-10">
-
                 {/* SECTION 1: ACCOUNT CREDENTIALS */}
                 <div>
                   <div className="flex items-center gap-2 mb-4 text-slate-800">
                     <Shield size={18} className="text-blue-500" />
-                    <h4 className="font-bold uppercase tracking-wider text-xs">Account Access (System)</h4>
+                    <h4 className="font-bold uppercase tracking-wider text-xs">
+                      Account Access (System)
+                    </h4>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-6 bg-slate-50/50 rounded-[24px] border border-slate-100">
                     <div className="md:col-span-2">
                       <label className={labelCls}>Full Name (Real)</label>
-                      <input required placeholder="e.g. Budi Santoso" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inputCls} />
+                      <input
+                        required
+                        placeholder="e.g. Budi Santoso"
+                        value={form.full_name}
+                        onChange={(e) =>
+                          setForm({ ...form, full_name: e.target.value })
+                        }
+                        className={inputCls}
+                      />
                     </div>
                     <div>
                       <label className={labelCls}>Access Email</label>
-                      <input required type="email" placeholder="coach@mail.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputCls} />
+                      <input
+                        required
+                        type="email"
+                        placeholder="coach@mail.com"
+                        value={form.email}
+                        onChange={(e) =>
+                          setForm({ ...form, email: e.target.value })
+                        }
+                        className={inputCls}
+                      />
                     </div>
                     <div>
                       <label className={labelCls}>
-                        Password {isEditing && <span className="text-slate-400 normal-case ml-1 font-normal">(Leave blank if unchanged)</span>}
+                        Password{" "}
+                        {isEditing && (
+                          <span className="text-slate-400 normal-case ml-1 font-normal">
+                            (Leave blank if unchanged)
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
-                        <input type={showPassword ? "text" : "password"} required={!isEditing} placeholder="******" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={`${inputCls} pr-12`} />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          required={!isEditing}
+                          placeholder="******"
+                          value={form.password}
+                          onChange={(e) =>
+                            setForm({ ...form, password: e.target.value })
+                          }
+                          className={`${inputCls} pr-12`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -358,53 +539,189 @@ export default function CoachManage() {
                 <div>
                   <div className="flex items-center gap-2 mb-4 text-slate-800">
                     <LayoutTemplate size={18} className="text-blue-500" />
-                    <h4 className="font-bold uppercase tracking-wider text-xs">Public Profile (Landing Page)</h4>
+                    <h4 className="font-bold uppercase tracking-wider text-xs">
+                      Public Profile (Landing Page)
+                    </h4>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                     <div>
-                      <label className={labelCls}>Nickname (Display Name)</label>
-                      <input required placeholder="e.g. Coach Budi" value={form.nickname} onChange={(e) => setForm({ ...form, nickname: e.target.value })} className={inputCls} />
+                      <label className={labelCls}>
+                        Nickname (Display Name)
+                      </label>
+                      <input
+                        required
+                        placeholder="e.g. Coach Budi"
+                        value={form.nickname}
+                        onChange={(e) =>
+                          setForm({ ...form, nickname: e.target.value })
+                        }
+                        className={inputCls}
+                      />
                     </div>
                     <div>
                       <label className={labelCls}>Role / Title</label>
-                      <input required placeholder="e.g. Head Coach" value={form.role_title} onChange={(e) => setForm({ ...form, role_title: e.target.value })} className={inputCls} />
+                      <input
+                        required
+                        placeholder="e.g. Head Coach"
+                        value={form.role_title}
+                        onChange={(e) =>
+                          setForm({ ...form, role_title: e.target.value })
+                        }
+                        className={inputCls}
+                      />
                     </div>
                     <div>
                       <label className={labelCls}>Swimming Specialty</label>
-                      <input required placeholder="e.g. Butterfly & Sprint" value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} className={inputCls} />
+                      <input
+                        required
+                        placeholder="e.g. Butterfly & Sprint"
+                        value={form.specialty}
+                        onChange={(e) =>
+                          setForm({ ...form, specialty: e.target.value })
+                        }
+                        className={inputCls}
+                      />
                     </div>
                     <div>
                       <label className={labelCls}>Contact / Phone</label>
-                      <input required placeholder="+62 812..." value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} className={inputCls} />
+                      <input
+                        required
+                        placeholder="+62 812..."
+                        value={form.phone_number}
+                        onChange={(e) =>
+                          setForm({ ...form, phone_number: e.target.value })
+                        }
+                        className={inputCls}
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className={labelCls}>Age</label>
-                        <input type="number" placeholder="e.g. 30" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className={inputCls} />
+                        <input
+                          type="number"
+                          placeholder="e.g. 30"
+                          value={form.age}
+                          onChange={(e) =>
+                            setForm({ ...form, age: e.target.value })
+                          }
+                          className={inputCls}
+                        />
                       </div>
                       <div>
                         <label className={labelCls}>Nationality</label>
-                        <input placeholder="Indonesia" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} className={inputCls} />
+                        <input
+                          placeholder="Indonesia"
+                          value={form.nationality}
+                          onChange={(e) =>
+                            setForm({ ...form, nationality: e.target.value })
+                          }
+                          className={inputCls}
+                        />
                       </div>
                     </div>
 
-                    <div>
-                      <label className={labelCls}>Profile Photo URL</label>
-                      <input placeholder="https://..." value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} className={inputCls} />
+                    {/* NEW: 2 Metode Input Foto Pelatih */}
+                    <div className="md:col-span-2">
+                      <div className="flex gap-6 mb-2">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer">
+                          <input
+                            type="radio"
+                            name="photo_method"
+                            className="w-4 h-4 accent-blue-600"
+                            checked={photoUploadMethod === "url"}
+                            onChange={() => setPhotoUploadMethod("url")}
+                          />
+                          Link / URL
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer">
+                          <input
+                            type="radio"
+                            name="photo_method"
+                            className="w-4 h-4 accent-blue-600"
+                            checked={photoUploadMethod === "file"}
+                            onChange={() => setPhotoUploadMethod("file")}
+                          />
+                          Upload File
+                        </label>
+                      </div>
+
+                      {photoUploadMethod === "url" ? (
+                        <div>
+                          <label className={labelCls}>Profile Photo URL</label>
+                          <input
+                            placeholder="https://..."
+                            value={form.photo_url}
+                            onChange={(e) =>
+                              setForm({ ...form, photo_url: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className={labelCls}>
+                            Pilih Foto dari Perangkat
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setPhotoFile(e.target.files[0])}
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                        </div>
+                      )}
+
+                      {/* Preview Image Dinamis untuk Pelatih */}
+                      <div className="mt-3 flex gap-4">
+                        {photoUploadMethod === "url" && form.photo_url && (
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative shrink-0">
+                            <img
+                              src={form.photo_url}
+                              alt="preview"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        )}
+                        {photoUploadMethod === "file" && photoFile && (
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative shrink-0">
+                            <img
+                              src={URL.createObjectURL(photoFile)}
+                              alt="preview file"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="md:col-span-2">
                       <label className={labelCls}>Experience Description</label>
-                      <textarea required rows={2} placeholder="Briefly describe the coach's experience..." value={form.experience_desc} onChange={(e) => setForm({ ...form, experience_desc: e.target.value })} className={`${inputCls} resize-none`} />
+                      <textarea
+                        required
+                        rows={2}
+                        placeholder="Briefly describe the coach's experience..."
+                        value={form.experience_desc}
+                        onChange={(e) =>
+                          setForm({ ...form, experience_desc: e.target.value })
+                        }
+                        className={`${inputCls} resize-none`}
+                      />
                     </div>
 
                     {/* Achievements */}
                     <div className="md:col-span-2 mt-2">
                       <div className="flex items-center justify-between mb-3">
                         <label className={labelCls}>Achievements List</label>
-                        <button type="button" onClick={addAchievement} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={addAchievement}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                        >
                           <Plus size={14} /> Add Row
                         </button>
                       </div>
@@ -412,17 +729,25 @@ export default function CoachManage() {
                         {form.achievements.map((ach, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-                              <span className="text-[10px] font-black">{index + 1}</span>
+                              <span className="text-[10px] font-black">
+                                {index + 1}
+                              </span>
                             </div>
                             <input
                               required
                               placeholder={`Achievement ${index + 1}...`}
                               value={ach}
-                              onChange={(e) => handleAchievementChange(index, e.target.value)}
+                              onChange={(e) =>
+                                handleAchievementChange(index, e.target.value)
+                              }
                               className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                             />
                             {form.achievements.length > 1 && (
-                              <button type="button" onClick={() => removeAchievement(index)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                              <button
+                                type="button"
+                                onClick={() => removeAchievement(index)}
+                                className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                              >
                                 <MinusCircle size={20} />
                               </button>
                             )}
@@ -434,8 +759,20 @@ export default function CoachManage() {
                     {/* Toggle Visibility */}
                     <div className="md:col-span-2 pt-4">
                       <label className="flex items-center gap-3 bg-blue-50/50 rounded-2xl px-5 py-4 cursor-pointer select-none border border-blue-100">
-                        <input type="checkbox" checked={form.show_on_landing} onChange={e => setForm({ ...form, show_on_landing: e.target.checked })} className="w-5 h-5 accent-blue-600 rounded" />
-                        <span className="text-sm font-bold text-blue-900">Display this coach on the Public Landing Page</span>
+                        <input
+                          type="checkbox"
+                          checked={form.show_on_landing}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              show_on_landing: e.target.checked,
+                            })
+                          }
+                          className="w-5 h-5 accent-blue-600 rounded"
+                        />
+                        <span className="text-sm font-bold text-blue-900">
+                          Display this coach on the Public Landing Page
+                        </span>
                       </label>
                     </div>
                   </div>
@@ -444,11 +781,23 @@ export default function CoachManage() {
 
               {/* Modal Footer */}
               <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-6 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="px-8 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50">
-                  {submitting ? "Processing..." : (isEditing ? "Save Changes" : "Register Coach")}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-8 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {submitting
+                    ? "Processing..."
+                    : isEditing
+                      ? "Save Changes"
+                      : "Register Coach"}
                 </button>
               </div>
             </form>

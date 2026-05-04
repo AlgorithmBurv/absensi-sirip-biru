@@ -377,7 +377,7 @@ export default function CoachLogs() {
         {totalPages > 0 && (
           <div className="p-4 border-t border-slate-50 flex items-center justify-between bg-slate-50/50">
             <span className="text-xs font-medium text-slate-500 pl-2">
-              Showing Page{" "}
+              Page{" "}
               <span className="font-bold text-slate-800">{currentPage}</span> of{" "}
               <span className="font-bold text-slate-800">{totalPages}</span>
             </span>
