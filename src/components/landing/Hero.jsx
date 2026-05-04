@@ -1,38 +1,68 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 export default function Hero() {
   return (
-    <section className="relative flex flex-col items-center justify-center px-4 pt-40 pb-24 text-center min-h-[90vh]">
-      {/* Dekorasi Background */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-400/20 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+    <section className="relative w-full min-h-screen flex items-center justify-end overflow-hidden px-6 lg:px-24">
+      {/* Background Image & Overlays */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop"
+          alt="Professional Swimmer"
+          className="w-full h-full object-cover object-center"
+        />
+        {/* Dark Navy Overlay to match the design */}
+        <div className="absolute inset-0 bg-[#0A192F]/60 mix-blend-multiply"></div>
+        {/* Gradient for text readability on the right */}
+        <div className="absolute inset-0 bg-gradient-to-l from-[#0A192F]/90 via-[#0A192F]/40 to-transparent"></div>
+      </div>
 
-      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-6 border border-blue-100">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-          </span>
-          System v2.0 is Live
-        </div>
-        
-        <h1 className="text-5xl md:text-7xl font-extrabold text-[#0a192f] tracking-tight mb-6 leading-tight">
-          Modernize Your <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">
-            Swim Club
-          </span> Management.
-        </h1>
-        
-        <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-          The all-in-one digital platform for Siripbiru Swim Club. Seamlessly track attendance with QR passes, manage coach schedules, and monitor athlete progression.
+      {/* Main Content (Right Aligned) */}
+      <div className="relative z-10 w-full max-w-2xl text-right pt-20">
+        {/* Small subtitle */}
+        <p className="text-[#00E5FF] text-xs font-bold uppercase tracking-[0.3em] mb-4 animate-in fade-in slide-in-from-right-8 duration-700">
+          Siripbiru Athletics
         </p>
 
-        <Link 
-          to="/login" 
-          className="inline-flex px-8 py-4 bg-[#0a192f] hover:bg-slate-800 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/20 transition-all active:scale-95 text-lg items-center justify-center gap-2"
-        >
-          Access Portal
-        </Link>
+        {/* Elegant Serif Heading */}
+        {/* Menggunakan font-serif bawaan tailwind untuk meniru gaya klasik di gambar */}
+        <h1 className="text-5xl md:text-7xl font-serif text-white mb-8 leading-[1.1] animate-in fade-in slide-in-from-right-10 duration-700 delay-100">
+          <span className="opacity-80 text-4xl md:text-6xl block mb-2">
+            Bangun kekuatan.
+          </span>
+          <span className="opacity-90 text-5xl md:text-7xl block mb-2">
+            Tingkatkan rekor.
+          </span>
+          <span className="font-bold">Jadilah juara.</span>
+        </h1>
+
+        {/* Cyan Button */}
+        <div className="flex justify-end animate-in fade-in slide-in-from-right-12 duration-700 delay-300">
+          <Link
+            to="/login"
+            className="px-8 py-4 bg-[#00E5FF] hover:bg-[#00B8CC] text-[#0A192F] text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-3"
+          >
+            <ArrowRight size={16} /> Mulai Berlatih
+          </Link>
+        </div>
+
+        {/* Decorative Wave element */}
+        <div className="flex justify-end mt-16 animate-in fade-in duration-1000 delay-500">
+          <svg
+            width="60"
+            height="10"
+            viewBox="0 0 60 10"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0 5C5 5 5 0 10 0C15 0 15 5 20 5C25 5 25 10 30 10C35 10 35 5 40 5C45 5 45 0 50 0C55 0 55 5 60 5"
+              stroke="#00E5FF"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
       </div>
     </section>
   );

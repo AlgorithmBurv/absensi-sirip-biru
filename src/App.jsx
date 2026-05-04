@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Komponen Utama
+import LandingPage from './pages/LandingPage'; // <-- Tambahan: Import Landing Page
 import Login from './pages/Login';
 import AuthGuard from './components/AuthGuard';
 import LayoutAdmin from './components/LayoutAdmin';
@@ -30,8 +31,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Redirect halaman utama langsung ke Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Halaman utama sekarang mengarah ke Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Rute Login */}
         <Route path="/login" element={<Login />} />
 
         {/* ============================================== */}

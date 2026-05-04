@@ -1,34 +1,64 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Waves } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+
+  // Efek transparan saat di atas, dan solid navy saat di-scroll
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <header className="fixed top-0 w-full px-6 py-4 z-50 transition-all duration-300">
-      <div className="max-w-7xl mx-auto flex justify-between items-center bg-white/80 backdrop-blur-md px-6 py-4 rounded-3xl shadow-sm border border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
-            <Waves size={24} className="text-white" />
-          </div>
-          <span className="font-black text-xl tracking-wide text-slate-800">
-            Sirip<span className="text-blue-600">biru</span>
+    <header
+      className={`fixed top-0 w-full z-50 transition-colors duration-300 ${scrolled ? "bg-[#0A192F] shadow-lg" : "bg-transparent"}`}
+    >
+      <div className="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
+        {/* Logo Text */}
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-2xl tracking-widest text-white uppercase">
+            SIRIP<span className="text-[#00E5FF]">BIRU</span>
           </span>
         </div>
-        
-        {/* Menu Navigasi Desktop */}
-        <nav className="hidden md:flex items-center gap-8 font-bold text-sm text-slate-500">
-          <a href="#about" className="hover:text-blue-600 transition-colors">About</a>
-          <a href="#course" className="hover:text-blue-600 transition-colors">Programs</a>
-          <a href="#coach" className="hover:text-blue-600 transition-colors">Coaches</a>
-          <a href="#testimonials" className="hover:text-blue-600 transition-colors">Reviews</a>
+
+        {/* Navigasi Desktop */}
+        <nav className="hidden md:flex items-center gap-10 text-xs font-bold uppercase tracking-widest text-white/80">
+          <a
+            href="#about"
+            className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
+          >
+            About
+          </a>
+          <a
+            href="#course"
+            className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
+          >
+            Programs
+          </a>
+          <a
+            href="#coach"
+            className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
+          >
+            Coaches
+          </a>
+          <a
+            href="#testimonials"
+            className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
+          >
+            Reviews
+          </a>
         </nav>
 
+        {/* Action Button */}
         <div>
-          <Link 
-            to="/login" 
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-95 flex items-center gap-2 text-sm"
+          <Link
+            to="/login"
+            className="text-xs uppercase font-bold text-white hover:text-[#00E5FF] transition-colors flex items-center gap-2"
           >
-            Portal Login <ArrowRight size={16} />
+            Access Portal <ArrowRight size={14} />
           </Link>
         </div>
       </div>
