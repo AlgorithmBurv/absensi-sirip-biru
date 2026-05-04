@@ -1,31 +1,27 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Quote, ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase } from "../../utils/supabaseClient";
 
 export default function Testimonials() {
-  const reviews = [
-    {
-      name: "Ibu Dina",
-      role: "Orang Tua Atlet",
-      text: "Sistem QR pass-nya sangat memudahkan saya memantau kehadiran anak. Laporannya real-time dan pelatihnya sangat profesional!",
-    },
-    {
-      name: "Reza Aditya",
-      role: "Atlet Kelas Elite",
-      text: "Fokus latihan jadi maksimal karena jadwal dan sesi terorganisir rapi. Evaluasi yang mendetail sangat membantu memperbaiki waktu renang saya.",
-    },
-    {
-      name: "Pak Hendra",
-      role: "Orang Tua Atlet",
-      text: "Fasilitas kelas dunia dan sistem yang transparan. Progres anak saya sangat terlihat jelas sejak bulan pertama bergabung dengan Siripbiru.",
-    },
-  ];
-
+  const [reviews, setReviews] = useState([]);
   const [current, setCurrent] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  useEffect(() => {
+    const fetchReviews = async () => {
+      const { data } = await supabase
+        .from("landing_testimonials")
+        .select("*")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false });
+      if (data) setReviews(data);
+    };
+    fetchReviews();
+  }, []);
+
   const goTo = useCallback(
     (index) => {
-      if (isAnimating) return;
+      if (isAnimating || reviews.length === 0) return;
       setIsAnimating(true);
       setTimeout(() => {
         setCurrent((index + reviews.length) % reviews.length);
@@ -38,26 +34,24 @@ export default function Testimonials() {
   const prev = () => goTo(current - 1);
   const next = () => goTo(current + 1);
 
-  // Auto-play setiap 5 detik
+  // Auto-play
   useEffect(() => {
-    const timer = setInterval(() => {
-      goTo(current + 1);
-    }, 5000);
+    if (reviews.length <= 1) return;
+    const timer = setInterval(() => goTo(current + 1), 5000);
     return () => clearInterval(timer);
-  }, [current, goTo]);
+  }, [current, goTo, reviews.length]);
+
+  if (reviews.length === 0) return null; // Sembunyikan section jika tidak ada ulasan
 
   return (
     <section
       id="testimonials"
       className="py-24 lg:py-32 px-6 bg-[#0A192F] relative overflow-hidden"
     >
-      {/* Ornamen Latar Belakang */}
       <div className="absolute -right-20 top-10 opacity-5 pointer-events-none">
         <Quote size={400} className="text-white" />
       </div>
-
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header Section */}
         <div className="text-center mb-20">
           <h2 className="text-[10px] font-bold text-[#00E5FF] uppercase tracking-[0.2em] mb-4">
             Success Stories
@@ -81,36 +75,25 @@ export default function Testimonials() {
           </svg>
         </div>
 
-        {/* ===== CAROUSEL ===== */}
         <div className="relative">
-          {/* Card Utama */}
           <div
-            className={`transition-opacity duration-300 ${
-              isAnimating ? "opacity-0" : "opacity-100"
-            }`}
+            className={`transition-opacity duration-300 ${isAnimating ? "opacity-0" : "opacity-100"}`}
           >
-            {/* Desktop: tampil 3 sekaligus | Mobile: 1 card */}
+            {/* Desktop (Tampil max 3) */}
             <div className="hidden md:grid md:grid-cols-3 gap-8">
               {[0, 1, 2].map((offset) => {
+                if (reviews.length === 0) return null;
                 const index = (current + offset) % reviews.length;
                 const r = reviews[index];
                 const isActive = offset === 0;
                 return (
                   <div
                     key={index}
-                    className={`p-10 border-t-2 relative group transition-all duration-300 ${
-                      isActive
-                        ? "bg-white/10 border-[#00E5FF] scale-[1.02]"
-                        : "bg-white/5 border-white/10 opacity-60"
-                    }`}
+                    className={`p-10 border-t-2 relative group transition-all duration-300 ${isActive ? "bg-white/10 border-[#00E5FF] scale-[1.02]" : "bg-white/5 border-white/10 opacity-60"}`}
                   >
                     <Quote
                       size={32}
-                      className={`mb-8 transition-all duration-300 ${
-                        isActive
-                          ? "text-[#00E5FF] opacity-100"
-                          : "text-[#00E5FF] opacity-20"
-                      }`}
+                      className={`mb-8 transition-all duration-300 ${isActive ? "text-[#00E5FF] opacity-100" : "text-[#00E5FF] opacity-20"}`}
                       strokeWidth={1.5}
                     />
                     <p className="text-white/70 leading-loose font-medium mb-10 text-sm">
@@ -129,7 +112,7 @@ export default function Testimonials() {
               })}
             </div>
 
-            {/* Mobile: 1 card */}
+            {/* Mobile (Tampil 1) */}
             <div className="md:hidden">
               <div className="bg-white/10 p-8 border-t-2 border-[#00E5FF]">
                 <Quote
@@ -138,14 +121,14 @@ export default function Testimonials() {
                   strokeWidth={1.5}
                 />
                 <p className="text-white/70 leading-loose font-medium mb-8 text-sm">
-                  "{reviews[current].text}"
+                  "{reviews[current]?.text}"
                 </p>
                 <div>
                   <h4 className="text-xl font-serif font-bold text-white mb-1">
-                    {reviews[current].name}
+                    {reviews[current]?.name}
                   </h4>
                   <p className="text-[#00E5FF] text-[10px] uppercase tracking-[0.2em] font-bold">
-                    {reviews[current].role}
+                    {reviews[current]?.role}
                   </p>
                 </div>
               </div>
@@ -154,32 +137,25 @@ export default function Testimonials() {
 
           {/* Kontrol Navigasi */}
           <div className="flex items-center justify-between mt-10">
-            {/* Dots Indicator */}
             <div className="flex items-center gap-2">
               {reviews.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => goTo(i)}
-                  className={`transition-all duration-300 rounded-full ${
-                    i === current
-                      ? "w-8 h-2 bg-[#00E5FF]"
-                      : "w-2 h-2 bg-white/20 hover:bg-white/40"
-                  }`}
+                  className={`transition-all duration-300 rounded-full ${i === current ? "w-8 h-2 bg-[#00E5FF]" : "w-2 h-2 bg-white/20 hover:bg-white/40"}`}
                 />
               ))}
             </div>
-
-            {/* Tombol Prev / Next */}
             <div className="flex items-center gap-3">
               <button
                 onClick={prev}
-                className="w-11 h-11 border border-white/20 flex items-center justify-center text-white/60 hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors duration-200"
+                className="w-11 h-11 border border-white/20 flex items-center justify-center text-white/60 hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
               <button
                 onClick={next}
-                className="w-11 h-11 border border-white/20 flex items-center justify-center text-white/60 hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors duration-200"
+                className="w-11 h-11 border border-white/20 flex items-center justify-center text-white/60 hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors"
               >
                 <ChevronRight size={18} />
               </button>

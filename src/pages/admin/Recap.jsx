@@ -37,25 +37,31 @@ export default function Recap() {
       if (type === "student") {
         const { data, error } = await supabase
           .from("attendance_logs")
-          .select(`
+          .select(
+            `
             id, status, scanned_at,
-            students ( nis, users ( full_name ) ),
+            students ( nis, users ( full_name ), classes ( name ) ),
             sessions ( name, session_date )
-          `)
+          `,
+          )
           .not("student_id", "is", null)
           .order("scanned_at", { ascending: false });
+
         if (error) throw error;
         setLogs(data || []);
       } else {
         const { data, error } = await supabase
           .from("attendance_logs")
-          .select(`
+          .select(
+            `
             id, status, scanned_at,
             coaches ( specialty, users ( full_name ) ),
             sessions ( name, session_date )
-          `)
+          `,
+          )
           .not("coach_id", "is", null)
           .order("scanned_at", { ascending: false });
+
         if (error) throw error;
         setLogs(data || []);
       }
@@ -93,7 +99,8 @@ export default function Recap() {
         return (
           log.students?.nis?.toLowerCase().includes(query) ||
           log.students?.users?.full_name?.toLowerCase().includes(query) ||
-          log.sessions?.name?.toLowerCase().includes(query)
+          log.sessions?.name?.toLowerCase().includes(query) ||
+          log.students?.classes?.name?.toLowerCase().includes(query)
         );
       } else {
         return (
@@ -111,12 +118,12 @@ export default function Recap() {
 
   if (dateFrom) {
     processedLogs = processedLogs.filter(
-      (log) => new Date(log.scanned_at) >= new Date(dateFrom + "T00:00:00")
+      (log) => new Date(log.scanned_at) >= new Date(dateFrom + "T00:00:00"),
     );
   }
   if (dateTo) {
     processedLogs = processedLogs.filter(
-      (log) => new Date(log.scanned_at) <= new Date(dateTo + "T23:59:59")
+      (log) => new Date(log.scanned_at) <= new Date(dateTo + "T23:59:59"),
     );
   }
 
@@ -129,7 +136,7 @@ export default function Recap() {
   const totalPages = Math.ceil(processedLogs.length / ITEMS_PER_PAGE);
   const paginatedLogs = processedLogs.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   const handleExportExcel = () => {
@@ -140,16 +147,17 @@ export default function Recap() {
         if (attendeeType === "student") {
           return {
             "Scan Date": dateObj.toLocaleDateString("en-GB"),
-            Time: dateObj.toLocaleTimeString("en-GB"),
+            "Scan Time": dateObj.toLocaleTimeString("en-GB"),
             NIS: log.students?.nis || "-",
             "Athlete Name": log.students?.users?.full_name || "Unknown",
+            Class: log.students?.classes?.name || "-",
             Session: log.sessions?.name || "-",
             Status: log.status.toUpperCase().replace("_", " "),
           };
         } else {
           return {
             "Scan Date": dateObj.toLocaleDateString("en-GB"),
-            Time: dateObj.toLocaleTimeString("en-GB"),
+            "Scan Time": dateObj.toLocaleTimeString("en-GB"),
             "Coach Name": log.coaches?.users?.full_name || "Unknown",
             Specialty: log.coaches?.specialty || "-",
             Session: log.sessions?.name || "-",
@@ -159,18 +167,39 @@ export default function Recap() {
       });
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
-      worksheet["!cols"] = [
-        { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 30 }, { wch: 20 },
-      ];
+
+      // Mengatur lebar kolom excel
+      if (attendeeType === "student") {
+        worksheet["!cols"] = [
+          { wch: 15 },
+          { wch: 12 },
+          { wch: 20 },
+          { wch: 25 },
+          { wch: 15 },
+          { wch: 30 },
+          { wch: 20 },
+        ];
+      } else {
+        worksheet["!cols"] = [
+          { wch: 15 },
+          { wch: 12 },
+          { wch: 25 },
+          { wch: 25 },
+          { wch: 30 },
+          { wch: 20 },
+        ];
+      }
+
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(
         workbook,
         worksheet,
-        attendeeType === "student" ? "Athlete Recap" : "Coach Recap"
+        attendeeType === "student" ? "Athlete Recap" : "Coach Recap",
       );
+
       XLSX.writeFile(
         workbook,
-        `Siripbiru_${attendeeType === "student" ? "Athlete" : "Coach"}_Recap_${new Date().getTime()}.xlsx`
+        `Siripbiru_${attendeeType === "student" ? "Athlete" : "Coach"}_Recap_${new Date().getTime()}.xlsx`,
       );
       toast.success("Export to Excel successful!", { id: loadingToast });
     } catch (error) {
@@ -180,14 +209,16 @@ export default function Recap() {
   };
 
   const getStatusStyle = (status) => {
-    if (status.includes("hadir")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (status === "izin") return "bg-amber-100 text-amber-700 border-amber-200";
+    if (status.includes("hadir"))
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    if (status === "izin")
+      return "bg-amber-100 text-amber-700 border-amber-200";
     if (status === "sakit") return "bg-red-100 text-red-700 border-red-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
-  const hasActiveFilters = searchQuery || filterStatus !== "all" || dateFrom || dateTo;
-
+  const hasActiveFilters =
+    searchQuery || filterStatus !== "all" || dateFrom || dateTo;
   const clearAllFilters = () => {
     setSearchQuery("");
     setFilterStatus("all");
@@ -225,10 +256,8 @@ export default function Recap() {
 
       {/* Controls Card */}
       <div className="max-w-7xl mx-auto mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4">
-
-        {/* Row 1: Toggle + Sort */}
+        {/* Row 1: Toggle + Search */}
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Toggle Athlete / Coach */}
           <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl flex-shrink-0">
             <button
               type="button"
@@ -256,7 +285,6 @@ export default function Recap() {
             </button>
           </div>
 
-          {/* Search — melebar mengisi sisa ruang */}
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search size={16} className="text-slate-400" />
@@ -265,7 +293,7 @@ export default function Recap() {
               type="text"
               placeholder={
                 attendeeType === "student"
-                  ? "Search by name, NIS, or session..."
+                  ? "Search by name, NIS, class, or session..."
                   : "Search by name, specialty, or session..."
               }
               value={searchQuery}
@@ -277,8 +305,6 @@ export default function Recap() {
 
         {/* Row 2: Filter Status + Date Range + Sort */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-
-          {/* Filter Status */}
           <div className="relative flex-shrink-0 sm:w-48">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Filter size={15} className="text-slate-400" />
@@ -296,7 +322,6 @@ export default function Recap() {
             </select>
           </div>
 
-          {/* Date Range */}
           <div className="flex items-center gap-2 flex-1">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
               <CalendarDays size={14} />
@@ -309,7 +334,7 @@ export default function Recap() {
               onChange={(e) => setDateFrom(e.target.value)}
               className="flex-1 min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
             />
-            <span className="text-slate-300 font-bold shrink-0">—</span>
+            <span className="text-slate-300 font-bold shrink-0"> </span>
             <input
               type="date"
               value={dateTo}
@@ -319,16 +344,21 @@ export default function Recap() {
             />
           </div>
 
-          {/* Sort + Clear */}
           <div className="flex gap-2 flex-shrink-0">
             <button
-              onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+              onClick={() =>
+                setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+              }
               className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-3 px-4 rounded-2xl transition-all text-sm"
             >
-              <ArrowUpDown size={15} className={sortOrder === "desc" ? "text-blue-600" : "text-slate-400"} />
+              <ArrowUpDown
+                size={15}
+                className={
+                  sortOrder === "desc" ? "text-blue-600" : "text-slate-400"
+                }
+              />
               {sortOrder === "desc" ? "Newest" : "Oldest"}
             </button>
-
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
@@ -357,9 +387,11 @@ export default function Recap() {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
-                <th className="px-6 py-4">Timestamp</th>
+                <th className="px-6 py-4">Timestamp & Time</th>
                 <th className="px-6 py-4">
-                  {attendeeType === "student" ? "Athlete Identity" : "Coach Identity"}
+                  {attendeeType === "student"
+                    ? "Athlete Identity"
+                    : "Coach Identity"}
                 </th>
                 <th className="px-6 py-4">Session Context</th>
                 <th className="px-6 py-4 text-right">Status</th>
@@ -369,14 +401,29 @@ export default function Recap() {
               {paginatedLogs.map((log) => {
                 const scanDateObj = new Date(log.scanned_at);
                 const dateStr = scanDateObj.toLocaleDateString("en-US", {
-                  month: "short", day: "numeric", year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
                 });
                 const timeStr = scanDateObj.toLocaleTimeString("en-US", {
-                  hour: "2-digit", minute: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
+                // Format session date
+                const sessionDateStr = new Date(
+                  log.sessions?.session_date,
+                ).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
                 });
 
                 return (
-                  <tr key={log.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <tr
+                    key={log.id}
+                    className="hover:bg-blue-50/30 transition-colors group"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <div className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
@@ -403,6 +450,9 @@ export default function Recap() {
                               <div className="text-xs text-slate-500 font-mono mt-0.5">
                                 {log.students?.nis || "-"}
                               </div>
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mt-1">
+                                {log.students?.classes?.name || "-"}
+                              </div>
                             </>
                           ) : (
                             <>
@@ -421,27 +471,33 @@ export default function Recap() {
                       <div className="font-semibold text-slate-700 text-sm">
                         {log.sessions?.name || "-"}
                       </div>
-                      <div className="text-xs text-blue-500 font-medium mt-0.5">
-                        {log.sessions?.session_date || "-"}
+                      <div className="text-xs text-slate-500 font-medium mt-0.5">
+                        {sessionDateStr}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`inline-block px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(log.status)}`}>
+                      <span
+                        className={`inline-block px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(log.status)}`}
+                      >
                         {log.status.replace("_", " ")}
                       </span>
                     </td>
                   </tr>
                 );
               })}
-
               {paginatedLogs.length === 0 && !loading && (
                 <tr>
-                  <td colSpan="4" className="px-6 py-20 text-center text-slate-400">
+                  <td
+                    colSpan="4"
+                    className="px-6 py-20 text-center text-slate-400"
+                  >
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search size={32} className="text-slate-300" />
                     </div>
                     <p className="font-bold text-slate-600">No records found</p>
-                    <p className="text-sm mt-1">Try adjusting your search or filter options.</p>
+                    <p className="text-sm mt-1">
+                      Try adjusting your search or filter options.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -466,7 +522,9 @@ export default function Recap() {
                 <ChevronLeft size={18} />
               </button>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >

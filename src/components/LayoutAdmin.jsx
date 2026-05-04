@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
+  LayoutTemplate, // <-- IMPORT IKON BARU
   Users,
   UserPlus,
   Layers,
@@ -16,7 +17,6 @@ import {
 export default function LayoutAdmin() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -26,6 +26,11 @@ export default function LayoutAdmin() {
 
   const menuItems = [
     { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={22} /> },
+    {
+      name: "Landing Page",
+      path: "/admin/landing",
+      icon: <LayoutTemplate size={22} />,
+    }, // <-- MENU BARU
     { name: "Classes", path: "/admin/classes", icon: <Layers size={22} /> },
     { name: "Athletes", path: "/admin/students", icon: <Users size={22} /> },
     { name: "Coaches", path: "/admin/coaches", icon: <UserPlus size={22} /> },
@@ -105,6 +110,7 @@ export default function LayoutAdmin() {
           >
             Management
           </p>
+
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (

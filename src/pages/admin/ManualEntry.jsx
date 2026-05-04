@@ -20,7 +20,6 @@ export default function ManualEntry() {
   const [sessions, setSessions] = useState([]);
   const [students, setStudents] = useState([]);
   const [coaches, setCoaches] = useState([]);
-
   const [attendeeType, setAttendeeType] = useState("student"); // "student" | "coach"
   const [form, setForm] = useState({
     session_id: "",
@@ -46,7 +45,7 @@ export default function ManualEntry() {
 
         const { data: std, error: stdError } = await supabase
           .from("students")
-          .select("id, nis, users(full_name), classes(name)")
+          .select("id, nis, class_id, users(full_name), classes(name)") // Memastikan class_id ditarik
           .order("nis");
 
         const { data: cch, error: cchError } = await supabase
@@ -67,6 +66,7 @@ export default function ManualEntry() {
         setLoading(false);
       }
     };
+
     loadData();
   }, []);
 
@@ -77,33 +77,60 @@ export default function ManualEntry() {
     setLocalSearch("");
   };
 
-  // List yang akan ditampilkan (terfilter oleh pencarian lokal)
-  const displayList = attendeeType === "student" ? students : coaches;
-  const filteredList = displayList.filter((item) => {
+  // Cari data sesi yang sedang dipilih
+  const activeSessionData = sessions.find((s) => s.id === form.session_id);
+
+  // Filter awal: Tampilkan hanya yang terdaftar di sesi yang dipilih
+  let baseList = [];
+  if (activeSessionData) {
+    if (attendeeType === "student") {
+      // Filter siswa: cek apakah class_id siswa ada di dalam array class_ids sesi
+      baseList = students.filter((std) =>
+        activeSessionData.class_ids?.includes(std.class_id)
+      );
+    } else {
+      // Filter pelatih: cek apakah id pelatih ada di dalam array coach_ids sesi
+      baseList = coaches.filter((cch) =>
+        activeSessionData.coach_ids?.includes(cch.id)
+      );
+    }
+  }
+
+  // Filter kedua: Terapkan pencarian dari search bar
+  const filteredList = baseList.filter((item) => {
     const name = item.users?.full_name?.toLowerCase() || "";
     const identifier = attendeeType === "student" ? item.nis : item.specialty;
     const search = localSearch.toLowerCase();
-    return name.includes(search) || (identifier && identifier.toLowerCase().includes(search));
+    return (
+      name.includes(search) ||
+      (identifier && identifier.toLowerCase().includes(search))
+    );
   });
 
   // Handle Toggle Satu Item
   const toggleSelection = (id) => {
     setSelectedAttendees((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
   // Handle Select All (Hanya yang tampil di filter)
   const toggleSelectAll = () => {
     const filteredIds = filteredList.map((i) => i.id);
-    const allSelected = filteredIds.every((id) => selectedAttendees.includes(id));
+    const allSelected = filteredIds.length > 0 && filteredIds.every((id) =>
+      selectedAttendees.includes(id),
+    );
 
     if (allSelected) {
       // Unselect all filtered
-      setSelectedAttendees((prev) => prev.filter((id) => !filteredIds.includes(id)));
+      setSelectedAttendees((prev) =>
+        prev.filter((id) => !filteredIds.includes(id)),
+      );
     } else {
       // Select all filtered (gabungkan tanpa duplikat)
-      setSelectedAttendees((prev) => Array.from(new Set([...prev, ...filteredIds])));
+      setSelectedAttendees((prev) =>
+        Array.from(new Set([...prev, ...filteredIds])),
+      );
     }
   };
 
@@ -119,7 +146,9 @@ export default function ManualEntry() {
     }
 
     setSubmitting(true);
-    const loadingToast = toast.loading(`Saving ${selectedAttendees.length} records...`);
+    const loadingToast = toast.loading(
+      `Saving ${selectedAttendees.length} records...`,
+    );
 
     try {
       // Eksekusi semua proses ke database secara paralel
@@ -140,8 +169,12 @@ export default function ManualEntry() {
           // Update (Timpa status)
           const { error: updateError } = await supabase
             .from("attendance_logs")
-            .update({ status: form.status, scanned_at: new Date().toISOString() })
+            .update({
+              status: form.status,
+              scanned_at: new Date().toISOString(),
+            })
             .eq("id", existingLog.id);
+
           if (updateError) throw updateError;
         } else {
           // Insert Baru
@@ -154,6 +187,7 @@ export default function ManualEntry() {
                 status: form.status,
               },
             ]);
+
           if (insertError) throw insertError;
         }
       });
@@ -162,7 +196,7 @@ export default function ManualEntry() {
 
       toast.success(
         `Successfully saved attendance for ${selectedAttendees.length} ${attendeeType}s!`,
-        { id: loadingToast }
+        { id: loadingToast },
       );
 
       // Reset form pilihan
@@ -179,7 +213,9 @@ export default function ManualEntry() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Loading data...</p>
+        <p className="text-slate-500 font-medium animate-pulse">
+          Loading data...
+        </p>
       </div>
     );
   }
@@ -203,8 +239,10 @@ export default function ManualEntry() {
       </div>
 
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden p-6 md:p-8">
-        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-8">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col md:flex-row gap-8"
+        >
           {/* KOLOM KIRI: Pengaturan Sesi & Status */}
           <div className="flex-1 space-y-6">
             {sessions.length === 0 && (
@@ -258,15 +296,31 @@ export default function ManualEntry() {
               <select
                 required
                 value={form.session_id}
-                onChange={(e) => setForm({ ...form, session_id: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, session_id: e.target.value });
+                  setSelectedAttendees([]); // Reset pilihan saat sesi diganti
+                  setLocalSearch("");
+                }}
                 className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700 cursor-pointer shadow-inner"
               >
-                <option value="">-- Select Gate / Session --</option>
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.session_date})
-                  </option>
-                ))}
+                <option value="">-- Select Session --</option>
+                {sessions.map((s) => {
+                  // Format ke angka DD/MM/YYYY HH:mm
+                  const dateObj = new Date(s.session_date);
+                  const day = String(dateObj.getDate()).padStart(2, '0');
+                  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                  const year = dateObj.getFullYear();
+                  const hours = String(dateObj.getHours()).padStart(2, '0');
+                  const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+                  
+                  const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}`;
+
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({formattedDate} WIB)
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -291,11 +345,17 @@ export default function ManualEntry() {
             <div className="pt-6 border-t border-slate-100 hidden md:block">
               <button
                 type="submit"
-                disabled={submitting || sessions.length === 0 || selectedAttendees.length === 0}
+                disabled={
+                  submitting ||
+                  sessions.length === 0 ||
+                  selectedAttendees.length === 0
+                }
                 className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full"
               >
                 <Save size={18} />
-                {submitting ? "Processing..." : `Save ${selectedAttendees.length > 0 ? selectedAttendees.length : ''} Records`}
+                {submitting
+                  ? "Processing..."
+                  : `Save ${selectedAttendees.length > 0 ? selectedAttendees.length : ""} Records`}
               </button>
             </div>
           </div>
@@ -312,24 +372,38 @@ export default function ManualEntry() {
                   {selectedAttendees.length} Selected
                 </span>
               </div>
-              
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
                   <input
                     type="text"
+                    disabled={!form.session_id}
                     placeholder={`Search ${attendeeType}...`}
                     value={localSearch}
                     onChange={(e) => setLocalSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium disabled:opacity-50"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={toggleSelectAll}
-                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+                  disabled={!form.session_id}
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle2 size={16} className={filteredList.length > 0 && filteredList.every((i) => selectedAttendees.includes(i.id)) ? "text-blue-600" : "text-slate-400"} />
+                  <CheckCircle2
+                    size={16}
+                    className={
+                      filteredList.length > 0 &&
+                      filteredList.every((i) =>
+                        selectedAttendees.includes(i.id),
+                      )
+                        ? "text-blue-600"
+                        : "text-slate-400"
+                    }
+                  />
                   Select All
                 </button>
               </div>
@@ -337,12 +411,24 @@ export default function ManualEntry() {
 
             {/* List Box (Scrollable) */}
             <div className="flex-1 overflow-y-auto p-2">
-              {filteredList.length === 0 ? (
+              {!form.session_id ? (
+                // State 1: Sesi belum dipilih
+                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                  <CalendarDays size={32} className="text-slate-300 mb-2" />
+                  <p className="text-sm font-medium">
+                    Please select an active session first.
+                  </p>
+                </div>
+              ) : filteredList.length === 0 ? (
+                // State 2: Sesi sudah dipilih, tapi data kosong / tidak ditemukan
                 <div className="h-full flex flex-col items-center justify-center text-slate-400">
                   <Search size={32} className="text-slate-300 mb-2" />
-                  <p className="text-sm font-medium">No {attendeeType} found.</p>
+                  <p className="text-sm font-medium">
+                    No {attendeeType} found for this session.
+                  </p>
                 </div>
               ) : (
+                // State 3: Data ditemukan, render grid
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {filteredList.map((item) => {
                     const isSelected = selectedAttendees.includes(item.id);
@@ -357,12 +443,20 @@ export default function ManualEntry() {
                         }`}
                       >
                         {isSelected ? (
-                          <CheckSquare size={20} className="text-blue-600 flex-shrink-0" />
+                          <CheckSquare
+                            size={20}
+                            className="text-blue-600 flex-shrink-0"
+                          />
                         ) : (
-                          <Square size={20} className="text-slate-300 flex-shrink-0" />
+                          <Square
+                            size={20}
+                            className="text-slate-300 flex-shrink-0"
+                          />
                         )}
                         <div className="overflow-hidden">
-                          <p className={`text-sm font-bold truncate ${isSelected ? "text-blue-900" : "text-slate-700"}`}>
+                          <p
+                            className={`text-sm font-bold truncate ${isSelected ? "text-blue-900" : "text-slate-700"}`}
+                          >
                             {item.users?.full_name || "Unknown"}
                           </p>
                           <p className="text-xs text-slate-500 truncate mt-0.5">
@@ -383,14 +477,19 @@ export default function ManualEntry() {
           <div className="pt-4 border-t border-slate-100 md:hidden">
             <button
               type="submit"
-              disabled={submitting || sessions.length === 0 || selectedAttendees.length === 0}
+              disabled={
+                submitting ||
+                sessions.length === 0 ||
+                selectedAttendees.length === 0
+              }
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full"
             >
               <Save size={18} />
-              {submitting ? "Processing..." : `Save ${selectedAttendees.length > 0 ? selectedAttendees.length : ''} Records`}
+              {submitting
+                ? "Processing..."
+                : `Save ${selectedAttendees.length > 0 ? selectedAttendees.length : ""} Records`}
             </button>
           </div>
-
         </form>
       </div>
     </div>

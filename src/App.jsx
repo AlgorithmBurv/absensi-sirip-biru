@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Komponen Utama
-import LandingPage from './pages/LandingPage'; // <-- Tambahan: Import Landing Page
+import LandingPage from "./pages/LandingPage";
 import Login from './pages/Login';
 import AuthGuard from './components/AuthGuard';
 import LayoutAdmin from './components/LayoutAdmin';
@@ -10,6 +10,7 @@ import LayoutCoach from "./components/LayoutCoach";
 
 // Halaman Admin
 import Dashboard from './pages/admin/Dashboard';
+import LandingManage from './pages/admin/LandingManage'; // <-- IMPORT BARU
 import ClassManage from './pages/admin/ClassManage';
 import StudentManage from './pages/admin/StudentManage';
 import CoachManage from "./pages/admin/CoachManage";
@@ -21,6 +22,7 @@ import Recap from './pages/admin/Recap';
 // Halaman Student
 import Profile from './pages/student/Profile';
 import History from './pages/student/History';
+import Schedule from "./pages/student/Schedule";
 
 // Halaman Coach
 import CoachProfile from "./pages/coach/CoachProfile";
@@ -31,10 +33,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Halaman utama sekarang mengarah ke Landing Page */}
         <Route path="/" element={<LandingPage />} />
-
-        {/* Rute Login */}
         <Route path="/login" element={<Login />} />
 
         {/* ============================================== */}
@@ -49,6 +48,8 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="landing" element={<LandingManage />} />{" "}
+          {/* <-- RUTE BARU */}
           <Route path="classes" element={<ClassManage />} />
           <Route path="students" element={<StudentManage />} />
           <Route path="coaches" element={<CoachManage />} />
@@ -71,6 +72,7 @@ function App() {
         >
           <Route index element={<Profile />} />
           <Route path="history" element={<History />} />
+          <Route path="schedule" element={<Schedule />} />
         </Route>
 
         {/* ============================================== */}

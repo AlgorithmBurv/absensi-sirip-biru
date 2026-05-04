@@ -1,24 +1,66 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { supabase } from "../../utils/supabaseClient";
 
 export default function AboutUs() {
+  const [aboutData, setAboutData] = useState({
+    title: "About Siripbiru",
+    subtitle: "Loading...",
+  });
+  const [gallery, setGallery] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch data teks
+      const { data: settings } = await supabase
+        .from("landing_settings")
+        .select("*")
+        .eq("section", "about")
+        .single();
+
+      // Fetch gambar galeri
+      const { data: images } = await supabase
+        .from("landing_gallery")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (settings) setAboutData(settings);
+      if (images) setGallery(images);
+    };
+    fetchData();
+  }, []);
+
   return (
     <>
       {/* ===== ABOUT SECTION ===== */}
       <section id="about" className="py-24 lg:py-32 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            {/* Bagian Gambar (Kiri) */}
+            {/* Bagian Gambar (Kiri) - Menggunakan 2 gambar pertama dari galeri jika ada */}
             <div className="relative w-full min-h-[500px] order-2 lg:order-1">
               <div className="absolute top-12 left-4 md:left-8 w-[70%] h-[320px] bg-[#00E5FF]"></div>
               <img
-                src="https://images.unsplash.com/photo-1519315901367-f34ff9154487?q=80&w=2070&auto=format&fit=crop"
-                alt="Swimmer in action"
+                src={
+                  gallery.length > 0
+                    ? gallery[0].image_url
+                    : "https://images.unsplash.com/photo-1519315901367-f34ff9154487?q=80&w=2070&auto=format&fit=crop"
+                }
+                alt={
+                  gallery.length > 0 ? gallery[0].alt_text : "Swimmer in action"
+                }
                 className="absolute top-0 right-0 w-[85%] h-[350px] object-cover shadow-md"
               />
               <img
-                src="https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop"
-                alt="Swimming underwater"
+                src={
+                  gallery.length > 1
+                    ? gallery[1].image_url
+                    : "https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop"
+                }
+                alt={
+                  gallery.length > 1
+                    ? gallery[1].alt_text
+                    : "Swimming underwater"
+                }
                 className="absolute bottom-0 left-0 w-[65%] h-[240px] object-cover border-8 border-white shadow-2xl"
               />
             </div>
@@ -30,9 +72,10 @@ export default function AboutUs() {
               </p>
 
               <h3 className="text-4xl md:text-5xl font-light text-slate-900 mb-4">
-                About{" "}
+                {/* Memisahkan kata pertama untuk styling */}
+                {aboutData.title.split(" ")[0]}{" "}
                 <span className="font-serif font-bold text-[#0A192F]">
-                  Siripbiru
+                  {aboutData.title.split(" ").slice(1).join(" ")}
                 </span>
               </h3>
 
@@ -51,14 +94,8 @@ export default function AboutUs() {
                 />
               </svg>
 
-              <p className="text-slate-500 leading-relaxed font-medium mb-8">
-                Lebih dari sekadar klub renang. Kami memadukan dedikasi
-                pelatihan fisik dengan presisi teknologi digital.{" "}
-                <span className="font-bold text-[#0A192F]">
-                  Siripbiru Swim Club
-                </span>{" "}
-                memastikan setiap metrik perkembangan atlet tercatat sempurna
-                untuk mencetak juara masa depan.
+              <p className="text-slate-500 leading-relaxed font-medium mb-8 whitespace-pre-wrap">
+                {aboutData.subtitle}
               </p>
 
               <div className="space-y-6 mb-10">
@@ -71,7 +108,6 @@ export default function AboutUs() {
                     tangguh di tingkat nasional.
                   </p>
                 </div>
-
                 <div className="border-l-2 border-[#00E5FF] pl-4">
                   <h4 className="font-bold text-[#0A192F] text-sm uppercase tracking-wider">
                     Fasilitas &amp; Data Pintar
@@ -95,7 +131,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ===== GALLERY SECTION ===== */}
+      {/* ===== GALLERY SECTION DINAMIS ===== */}
       <section id="gallery" className="py-24 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           {/* Header Galeri */}
@@ -104,7 +140,6 @@ export default function AboutUs() {
               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] mb-3">
                 Momen Terbaik
               </p>
-
               <h3 className="text-4xl md:text-5xl font-light text-slate-900">
                 Our{" "}
                 <span className="font-serif font-bold text-[#00E5FF]">
@@ -112,53 +147,50 @@ export default function AboutUs() {
                 </span>
               </h3>
             </div>
-
-            {/* FIXED LINK */}
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-[0.15em] hover:text-[#00E5FF] transition-colors self-start md:self-auto"
-            >
-              Lihat semua <ArrowRight size={13} />
-            </a>
           </div>
 
-          {/* Grid Galeri */}
+          {/* Grid Galeri Dinamis */}
           <div className="grid grid-cols-2 md:grid-cols-3 grid-rows-3 gap-3 h-[520px] md:h-[560px]">
-            <div className="relative col-span-1 row-span-2 overflow-hidden group">
-              <img
-                src="https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=800&auto=format&fit=crop"
-                alt="Training session"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
-            </div>
-
-            <div className="relative col-span-1 row-span-1 overflow-hidden group">
-              <img
-                src="https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=800&auto=format&fit=crop"
-                alt="Competition"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
-            </div>
-
-            <div className="relative col-span-1 row-span-1 overflow-hidden group">
-              <img
-                src="https://images.unsplash.com/photo-1519315901367-f34ff9154487?q=80&w=800&auto=format&fit=crop"
-                alt="Swimmer in action"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
-            </div>
-
-            <div className="relative col-span-2 row-span-1 overflow-hidden group">
-              <img
-                src="https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=1200&auto=format&fit=crop"
-                alt="Swimming underwater"
-                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
-            </div>
+            {gallery.length >= 4 ? (
+              <>
+                <div className="relative col-span-1 row-span-2 overflow-hidden group">
+                  <img
+                    src={gallery[0].image_url}
+                    alt={gallery[0].alt_text}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
+                </div>
+                <div className="relative col-span-1 row-span-1 overflow-hidden group">
+                  <img
+                    src={gallery[1].image_url}
+                    alt={gallery[1].alt_text}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
+                </div>
+                <div className="relative col-span-1 row-span-1 overflow-hidden group">
+                  <img
+                    src={gallery[2].image_url}
+                    alt={gallery[2].alt_text}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
+                </div>
+                <div className="relative col-span-2 row-span-1 overflow-hidden group">
+                  <img
+                    src={gallery[3].image_url}
+                    alt={gallery[3].alt_text}
+                    className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-[#00E5FF]/0 group-hover:bg-[#00E5FF]/20 transition-all duration-300" />
+                </div>
+              </>
+            ) : (
+              <div className="col-span-3 row-span-3 flex items-center justify-center text-slate-400 bg-slate-50 border border-slate-100 rounded-2xl">
+                Belum cukup gambar untuk menampilkan galeri (Butuh min. 4)
+              </div>
+            )}
           </div>
         </div>
       </section>

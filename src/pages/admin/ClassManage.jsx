@@ -12,9 +12,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-// ============================================================
-// REUSABLE CONFIRMATION MODAL
-// ============================================================
 function ConfirmModal({
   isOpen,
   onClose,
@@ -51,11 +48,7 @@ function ConfirmModal({
           <button
             onClick={onConfirm}
             className={`flex-1 py-3 font-bold text-white rounded-2xl shadow-lg transition-all active:scale-95
-              ${
-                isDestructive
-                  ? "bg-red-500 hover:bg-red-600 shadow-red-500/30"
-                  : "bg-amber-500 hover:bg-amber-600 shadow-amber-500/30"
-              }`}
+              ${isDestructive ? "bg-red-500 hover:bg-red-600 shadow-red-500/30" : "bg-amber-500 hover:bg-amber-600 shadow-amber-500/30"}`}
           >
             {confirmLabel}
           </button>
@@ -74,7 +67,6 @@ export default function ClassManage() {
   const [currentId, setCurrentId] = useState(null);
   const [form, setForm] = useState({ name: "" });
 
-  // Confirm modal state
   const [confirmModal, setConfirmModal] = useState({
     open: false,
     id: null,
@@ -121,7 +113,6 @@ export default function ClassManage() {
         .from("classes")
         .update({ name: form.name })
         .eq("id", currentId);
-
       if (!error) {
         toast.success("Class updated successfully", { id: loadingToast });
         setIsModalOpen(false);
@@ -132,7 +123,6 @@ export default function ClassManage() {
       const { error } = await supabase
         .from("classes")
         .insert([{ name: form.name }]);
-
       if (!error) {
         toast.success("Class created successfully", { id: loadingToast });
         setIsModalOpen(false);
@@ -169,7 +159,6 @@ export default function ClassManage() {
         toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }}
       />
 
-      {/* Confirm Delete Modal */}
       <ConfirmModal
         isOpen={confirmModal.open}
         onClose={() => setConfirmModal({ open: false, id: null, name: "" })}
@@ -226,11 +215,11 @@ export default function ClassManage() {
               {classes.map((c) => (
                 <tr
                   key={c.id}
-                  className="hover:bg-blue-50/30 transition-colors group"
+                  className="hover:bg-blue-50/30 transition-colors"
                 >
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0 group-hover:bg-blue-100 transition-colors">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
                         <Layers size={20} />
                       </div>
                       <div>
@@ -244,7 +233,7 @@ export default function ClassManage() {
                     </div>
                   </td>
                   <td className="px-8 py-5 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="flex justify-end gap-2">
                       <button
                         onClick={() => openEditModal(c)}
                         className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
@@ -305,7 +294,7 @@ export default function ClassManage() {
             <form onSubmit={handleSubmit} className="p-8">
               <div className="space-y-2 mb-8">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Class / Group Name
+                  Class
                 </label>
                 <input
                   required

@@ -1,14 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { supabase } from "../../utils/supabaseClient";
 
 export default function Hero() {
+  const [heroData, setHeroData] = useState({
+    title: "Bangun kekuatan. Tingkatkan rekor. Jadilah juara.",
+    subtitle: "Siripbiru Athletics",
+    action_url: "/login",
+    image_url:
+      "https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop",
+  });
+
+  useEffect(() => {
+    const fetchHero = async () => {
+      const { data } = await supabase
+        .from("landing_settings")
+        .select("*")
+        .eq("section", "hero")
+        .single();
+
+      if (data) setHeroData(data);
+    };
+
+    fetchHero();
+  }, []);
+
   return (
     <section className="relative w-full min-h-screen flex items-center justify-end overflow-hidden px-6 lg:px-24">
       {/* Background Image & Overlays */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop"
+          src={
+            heroData.image_url ||
+            "https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop"
+          }
           alt="Professional Swimmer"
           className="w-full h-full object-cover object-center"
         />
@@ -22,25 +48,18 @@ export default function Hero() {
       <div className="relative z-10 w-full max-w-2xl text-right pt-20">
         {/* Small subtitle */}
         <p className="text-[#00E5FF] text-xs font-bold uppercase tracking-[0.3em] mb-4 animate-in fade-in slide-in-from-right-8 duration-700">
-          Siripbiru Athletics
+          {heroData.subtitle}
         </p>
 
-        {/* Elegant Serif Heading */}
-        {/* Menggunakan font-serif bawaan tailwind untuk meniru gaya klasik di gambar */}
-        <h1 className="text-5xl md:text-7xl font-serif text-white mb-8 leading-[1.1] animate-in fade-in slide-in-from-right-10 duration-700 delay-100">
-          <span className="opacity-80 text-4xl md:text-6xl block mb-2">
-            Bangun kekuatan.
-          </span>
-          <span className="opacity-90 text-5xl md:text-7xl block mb-2">
-            Tingkatkan rekor.
-          </span>
-          <span className="font-bold">Jadilah juara.</span>
+        {/* Render Judul secara dinamis */}
+        <h1 className="text-5xl md:text-7xl font-serif text-white mb-8 leading-[1.2] animate-in fade-in slide-in-from-right-10 duration-700 delay-100">
+          {heroData.title}
         </h1>
 
         {/* Cyan Button */}
         <div className="flex justify-end animate-in fade-in slide-in-from-right-12 duration-700 delay-300">
           <Link
-            to="/login"
+            to={heroData.action_url || "/login"}
             className="px-8 py-4 bg-[#00E5FF] hover:bg-[#00B8CC] text-[#0A192F] text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-3"
           >
             <ArrowRight size={16} /> Mulai Berlatih

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { MapPin, Phone, Mail, ArrowRight } from "lucide-react";
+import { supabase } from "../../utils/supabaseClient";
 
-/* ===== SVG ICONS (pengganti lucide brand icons) ===== */
+/* ===== SVG ICONS ===== */
 const InstagramIcon = ({ size = 18 }) => (
   <svg
     width={size}
@@ -18,7 +19,6 @@ const InstagramIcon = ({ size = 18 }) => (
     <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 );
-
 const FacebookIcon = ({ size = 18 }) => (
   <svg
     width={size}
@@ -33,7 +33,6 @@ const FacebookIcon = ({ size = 18 }) => (
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 );
-
 const TwitterIcon = ({ size = 18 }) => (
   <svg
     width={size}
@@ -50,6 +49,58 @@ const TwitterIcon = ({ size = 18 }) => (
 );
 
 export default function Footer() {
+  const [contactInfo, setContactInfo] = useState({
+    address: "Loading...",
+    phone: "",
+    email: "",
+  });
+
+  // State baru untuk sosial media
+  const [socialLinks, setSocialLinks] = useState({
+    instagram: "#",
+    facebook: "#",
+    twitter: "#",
+  });
+
+  useEffect(() => {
+    const fetchFooterData = async () => {
+      const { data } = await supabase
+        .from("landing_settings")
+        .select("*")
+        .in("section", ["footer_contact", "footer_social"]); // Ambil 2 section sekaligus
+
+      if (data) {
+        // Ekstrak data kontak
+        const contact = data.find((item) => item.section === "footer_contact");
+        if (contact) {
+          const [phone, email] = contact.action_url
+            ? contact.action_url.split("|")
+            : ["", ""];
+          setContactInfo({
+            address: contact.subtitle,
+            phone: phone,
+            email: email,
+          });
+        }
+
+        // Ekstrak data link sosial media
+        const social = data.find((item) => item.section === "footer_social");
+        if (social) {
+          // Format penyimpanan di action_url: "link_ig|link_fb|link_tw"
+          const [ig, fb, tw] = social.action_url
+            ? social.action_url.split("|")
+            : ["#", "#", "#"];
+          setSocialLinks({
+            instagram: ig || "#",
+            facebook: fb || "#",
+            twitter: tw || "#",
+          });
+        }
+      }
+    };
+    fetchFooterData();
+  }, []);
+
   return (
     <footer className="bg-[#060D1A] pt-20 pb-10 px-6 border-t border-[#00E5FF]/10 relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
@@ -64,24 +115,27 @@ export default function Footer() {
               Klub renang profesional yang memadukan dedikasi pelatihan fisik
               dengan presisi teknologi digital untuk mencetak juara masa depan.
             </p>
-
             <div className="flex gap-4">
               <a
-                href="#"
+                href={socialLinks.instagram}
+                target="_blank"
+                rel="noreferrer"
                 className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 hover:bg-[#00E5FF] hover:text-[#0A192F] transition-all"
               >
                 <InstagramIcon size={18} />
               </a>
-
               <a
-                href="#"
+                href={socialLinks.facebook}
+                target="_blank"
+                rel="noreferrer"
                 className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 hover:bg-[#00E5FF] hover:text-[#0A192F] transition-all"
               >
                 <FacebookIcon size={18} />
               </a>
-
               <a
-                href="#"
+                href={socialLinks.twitter}
+                target="_blank"
+                rel="noreferrer"
                 className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 hover:bg-[#00E5FF] hover:text-[#0A192F] transition-all"
               >
                 <TwitterIcon size={18} />
@@ -107,7 +161,6 @@ export default function Footer() {
                   </span>
                 </a>
               </li>
-
               <li>
                 <a
                   href="#course"
@@ -122,7 +175,6 @@ export default function Footer() {
                   </span>
                 </a>
               </li>
-
               <li>
                 <a
                   href="#coach"
@@ -137,7 +189,6 @@ export default function Footer() {
                   </span>
                 </a>
               </li>
-
               <li>
                 <a
                   href="#testimonials"
@@ -158,25 +209,18 @@ export default function Footer() {
           {/* Column 3 & 4: Contact Info */}
           <div className="lg:col-span-2">
             <h4 className="text-white font-serif text-xl mb-6">Get in Touch</h4>
-
             <div className="grid sm:grid-cols-2 gap-8">
               {/* Address */}
               <div className="flex gap-4">
                 <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#00E5FF] flex-shrink-0">
                   <MapPin size={18} />
                 </div>
-
                 <div>
                   <p className="text-white/80 text-sm font-bold mb-2 tracking-wide">
                     HEADQUARTERS
                   </p>
-
-                  <p className="text-white/50 text-sm leading-relaxed">
-                    Gelora Bung Karno Aquatic Stadium
-                    <br />
-                    Senayan, Jakarta Pusat 10270
-                    <br />
-                    Indonesia
+                  <p className="text-white/50 text-sm leading-relaxed whitespace-pre-wrap">
+                    {contactInfo.address}
                   </p>
                 </div>
               </div>
@@ -187,27 +231,22 @@ export default function Footer() {
                   <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#00E5FF] flex-shrink-0">
                     <Phone size={18} />
                   </div>
-
                   <div>
                     <p className="text-white/80 text-sm font-bold mb-1 tracking-wide">
                       PHONE
                     </p>
-
-                    <p className="text-white/50 text-sm">+62 812 3456 7890</p>
+                    <p className="text-white/50 text-sm">{contactInfo.phone}</p>
                   </div>
                 </div>
-
                 <div className="flex gap-4">
                   <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#00E5FF] flex-shrink-0">
                     <Mail size={18} />
                   </div>
-
                   <div>
                     <p className="text-white/80 text-sm font-bold mb-1 tracking-wide">
                       EMAIL
                     </p>
-
-                    <p className="text-white/50 text-sm">hello@siripbiru.com</p>
+                    <p className="text-white/50 text-sm">{contactInfo.email}</p>
                   </div>
                 </div>
               </div>
@@ -218,10 +257,9 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-white/40 text-xs font-medium">
-            © {new Date().getFullYear()} Siripbiru Swim Club. All rights
+            &copy; {new Date().getFullYear()} Siripbiru Swim Club. All rights
             reserved.
           </p>
-
           <svg
             width="40"
             height="6"
@@ -236,12 +274,10 @@ export default function Footer() {
               strokeWidth="2"
             />
           </svg>
-
           <div className="flex items-center gap-6 text-white/40 text-xs font-medium">
             <a href="#" className="hover:text-[#00E5FF] transition-colors">
               Privacy Policy
             </a>
-
             <a href="#" className="hover:text-[#00E5FF] transition-colors">
               Terms of Service
             </a>

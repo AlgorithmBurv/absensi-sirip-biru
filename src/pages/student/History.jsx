@@ -9,17 +9,15 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  Info,
 } from "lucide-react";
 
 export default function History() {
   const [logs, setLogs] = useState([]);
+  const [coachesMap, setCoachesMap] = useState({});
+  const [studentClass, setStudentClass] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // States untuk Search, Filter, Sort, & Pagination
+  // States for Search, Filter, Sort, & Pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -32,25 +30,38 @@ export default function History() {
         setLoading(true);
         const savedUser = localStorage.getItem("user_session");
         if (!savedUser) return;
-
         const user = JSON.parse(savedUser);
 
-        // Cari student_id berdasarkan user_id
-        const { data: student } = await supabase
+        // 1. Dapatkan student_id dan nama kelas siswa ini
+        const { data: student, error: studentError } = await supabase
           .from("students")
-          .select("id")
+          .select("id, classes(name)")
           .eq("user_id", user.id)
           .single();
 
-        if (!student) throw new Error("Athlete data not found");
+        if (studentError || !student) throw new Error("Athlete data not found");
+        setStudentClass(student.classes?.name || "No Class");
 
-        // Ambil riwayat absen berdasarkan student_id
+        // 2. Tarik semua data pelatih untuk mapping nama berdasarkan coach_ids
+        const { data: coachData } = await supabase
+          .from("coaches")
+          .select("id, users(full_name)");
+
+        const cMap = {};
+        if (coachData) {
+          coachData.forEach((c) => {
+            cMap[c.id] = c.users?.full_name;
+          });
+        }
+        setCoachesMap(cMap);
+
+        // 3. Tarik riwayat absensi (logs)
         const { data: attendanceLogs, error } = await supabase
           .from("attendance_logs")
           .select(
             `
             id, status, scanned_at,
-            sessions ( name, session_date )
+            sessions ( name, session_date, coach_ids )
           `,
           )
           .eq("student_id", student.id)
@@ -68,12 +79,12 @@ export default function History() {
     fetchHistory();
   }, []);
 
-  // Reset pagination ke halaman 1 jika filter/search/sort berubah
+  // Reset pagination to page 1 if filter/search/sort changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, filterStatus, sortOrder]);
 
-  // Memproses Data: Search -> Filter -> Sort
+  // Process Data: Search -> Filter -> Sort
   let processedLogs = [...logs];
 
   if (searchQuery) {
@@ -100,7 +111,7 @@ export default function History() {
     currentPage * ITEMS_PER_PAGE,
   );
 
-  // Helper untuk Status Badge
+  // Helper for Status Badge
   const getStatusStyle = (status) => {
     if (status.includes("hadir"))
       return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -122,7 +133,6 @@ export default function History() {
   }
 
   return (
-    // DI SINI KUNCINYA: max-w-7xl w-full agar layout melebar penuh seperti Recap
     <div className="py-6 font-sans max-w-7xl mx-auto w-full px-2">
       {/* Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -171,6 +181,7 @@ export default function History() {
             <option value="hadir_manual">Present (Manual)</option>
             <option value="izin">Excused</option>
             <option value="sakit">Sick</option>
+            <option value="alpa">Absent</option>
           </select>
         </div>
 
@@ -191,14 +202,15 @@ export default function History() {
         </button>
       </div>
 
-      {/* TABLE SECTION - Menggunakan desain mirip Recap */}
+      {/* TABLE SECTION */}
       <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[400px] mb-8">
         <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse min-w-[600px]">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
                 <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">Session Name</th>
+                <th className="px-6 py-4">Session Details</th>
+                <th className="px-6 py-4">Class & Instructor</th>
                 <th className="px-6 py-4 text-right">Status</th>
               </tr>
             </thead>
@@ -214,13 +226,30 @@ export default function History() {
                   hour: "2-digit",
                   minute: "2-digit",
                 });
-                const sessionDate = new Date(
-                  log.sessions?.session_date,
-                ).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                });
+
+                // Parse the session_date (TIMESTAMP)
+                const sessionDateObj = new Date(log.sessions?.session_date);
+                const sessionDateStr = sessionDateObj.toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                );
+                const sessionTimeStr = sessionDateObj.toLocaleTimeString(
+                  "en-US",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                );
+
+                // Identifikasi nama instruktur dari array coach_ids
+                const assignedCoaches =
+                  log.sessions?.coach_ids?.map(
+                    (id) => coachesMap[id] || "Unknown Coach",
+                  ) || [];
 
                 return (
                   <tr
@@ -244,7 +273,18 @@ export default function History() {
                         {log.sessions?.name || "Unknown Session"}
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        {sessionDate}
+                        {sessionDateStr} • {sessionTimeStr}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-blue-600 text-sm">
+                        {studentClass}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        <span className="font-medium">Coach:</span>{" "}
+                        {assignedCoaches.length > 0
+                          ? assignedCoaches.join(", ")
+                          : "To be assigned"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -258,11 +298,11 @@ export default function History() {
                 );
               })}
 
-              {/* Empty State dalam Tabel */}
+              {/* Empty State */}
               {paginatedLogs.length === 0 && !loading && (
                 <tr>
                   <td
-                    colSpan="3"
+                    colSpan="4"
                     className="px-6 py-20 text-center text-slate-400"
                   >
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">

@@ -22,6 +22,7 @@ export default function CoachLogs() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -39,14 +40,17 @@ export default function CoachLogs() {
           .eq("user_id", user.id)
           .single();
 
-        if (coachError || !coachData) throw new Error("Coach profile not found.");
+        if (coachError || !coachData)
+          throw new Error("Coach profile not found.");
 
         const { data, error } = await supabase
           .from("attendance_logs")
-          .select(`
+          .select(
+            `
             id, status, scanned_at,
             sessions ( name, session_date )
-          `)
+          `,
+          )
           .eq("coach_id", coachData.id)
           .order("scanned_at", { ascending: false });
 
@@ -71,7 +75,7 @@ export default function CoachLogs() {
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
     processedLogs = processedLogs.filter((log) =>
-      log.sessions?.name?.toLowerCase().includes(query)
+      log.sessions?.name?.toLowerCase().includes(query),
     );
   }
 
@@ -81,12 +85,13 @@ export default function CoachLogs() {
 
   if (dateFrom) {
     processedLogs = processedLogs.filter(
-      (log) => new Date(log.scanned_at) >= new Date(dateFrom + "T00:00:00")
+      (log) => new Date(log.scanned_at) >= new Date(dateFrom + "T00:00:00"),
     );
   }
+
   if (dateTo) {
     processedLogs = processedLogs.filter(
-      (log) => new Date(log.scanned_at) <= new Date(dateTo + "T23:59:59")
+      (log) => new Date(log.scanned_at) <= new Date(dateTo + "T23:59:59"),
     );
   }
 
@@ -99,18 +104,20 @@ export default function CoachLogs() {
   const totalPages = Math.ceil(processedLogs.length / ITEMS_PER_PAGE);
   const paginatedLogs = processedLogs.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   const getStatusStyle = (status) => {
-    if (status.includes("hadir")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (status === "izin") return "bg-amber-100 text-amber-700 border-amber-200";
+    if (status.includes("hadir"))
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    if (status === "izin")
+      return "bg-amber-100 text-amber-700 border-amber-200";
     if (status === "sakit") return "bg-red-100 text-red-700 border-red-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
-  const hasActiveFilters = searchQuery || filterStatus !== "all" || dateFrom || dateTo;
-
+  const hasActiveFilters =
+    searchQuery || filterStatus !== "all" || dateFrom || dateTo;
   const clearAllFilters = () => {
     setSearchQuery("");
     setFilterStatus("all");
@@ -118,10 +125,10 @@ export default function CoachLogs() {
     setDateTo("");
   };
 
-  const totalHadir = logs.filter((l) => l.status.includes("hadir")).length;
-  const totalIzin = logs.filter((l) => l.status === "izin").length;
-  const totalSakit = logs.filter((l) => l.status === "sakit").length;
-  const totalAlpa = logs.filter((l) => l.status === "alpa").length;
+  const totalPresent = logs.filter((l) => l.status.includes("hadir")).length;
+  const totalExcused = logs.filter((l) => l.status === "izin").length;
+  const totalSick = logs.filter((l) => l.status === "sakit").length;
+  const totalAbsent = logs.filter((l) => l.status === "alpa").length;
 
   if (loading) {
     return (
@@ -148,31 +155,34 @@ export default function CoachLogs() {
           Attendance Logs
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Your personal attendance history across all sessions.
+          Your personal attendance history across all training sessions.
         </p>
       </div>
 
       {/* Summary Cards */}
       <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Present", value: totalHadir, color: "text-emerald-600" },
-          { label: "Excused", value: totalIzin, color: "text-amber-600" },
-          { label: "Sick", value: totalSakit, color: "text-red-500" },
-          { label: "Absent", value: totalAlpa, color: "text-slate-500" },
+          { label: "Present", value: totalPresent, color: "text-emerald-600" },
+          { label: "Excused", value: totalExcused, color: "text-amber-600" },
+          { label: "Sick", value: totalSick, color: "text-red-500" },
+          { label: "Absent", value: totalAbsent, color: "text-slate-500" },
         ].map((card) => (
           <div
             key={card.label}
             className="bg-white rounded-3xl p-5 shadow-xl shadow-blue-900/5 border border-slate-100 flex flex-col gap-1"
           >
-            <div className={`text-3xl font-black ${card.color}`}>{card.value}</div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{card.label}</div>
+            <div className={`text-3xl font-black ${card.color}`}>
+              {card.value}
+            </div>
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              {card.label}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Controls Card — sama persis strukturnya dengan Recap.tsx */}
+      {/* Controls Card */}
       <div className="max-w-7xl mx-auto mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4">
-
         {/* Row 1: Search */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -189,7 +199,6 @@ export default function CoachLogs() {
 
         {/* Row 2: Filter Status + Date Range + Sort + Clear */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-
           {/* Filter Status */}
           <div className="relative flex-shrink-0 sm:w-48">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -201,10 +210,11 @@ export default function CoachLogs() {
               className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-600"
             >
               <option value="all">All Status</option>
+              <option value="hadir_qr">Present (QR)</option>
               <option value="hadir_manual">Present (Manual)</option>
-              <option value="izin">Excused (Izin)</option>
-              <option value="sakit">Sick (Sakit)</option>
-              <option value="alpa">Absent (Alpa)</option>
+              <option value="izin">Excused</option>
+              <option value="sakit">Sick</option>
+              <option value="alpa">Absent</option>
             </select>
           </div>
 
@@ -221,7 +231,7 @@ export default function CoachLogs() {
               onChange={(e) => setDateFrom(e.target.value)}
               className="flex-1 min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
             />
-            <span className="text-slate-300 font-bold shrink-0">—</span>
+            <span className="text-slate-300 font-bold shrink-0">-</span>
             <input
               type="date"
               value={dateTo}
@@ -234,10 +244,17 @@ export default function CoachLogs() {
           {/* Sort + Clear */}
           <div className="flex gap-2 flex-shrink-0">
             <button
-              onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+              onClick={() =>
+                setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+              }
               className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-3 px-4 rounded-2xl transition-all text-sm"
             >
-              <ArrowUpDown size={15} className={sortOrder === "desc" ? "text-blue-600" : "text-slate-400"} />
+              <ArrowUpDown
+                size={15}
+                className={
+                  sortOrder === "desc" ? "text-blue-600" : "text-slate-400"
+                }
+              />
               {sortOrder === "desc" ? "Newest" : "Oldest"}
             </button>
 
@@ -268,7 +285,7 @@ export default function CoachLogs() {
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
                 <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">Session</th>
+                <th className="px-6 py-4">Session Details</th>
                 <th className="px-6 py-4 text-right">Status</th>
               </tr>
             </thead>
@@ -276,17 +293,38 @@ export default function CoachLogs() {
               {paginatedLogs.map((log) => {
                 const scanDateObj = new Date(log.scanned_at);
                 const dateStr = scanDateObj.toLocaleDateString("en-US", {
-                  month: "short", day: "numeric", year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
                 });
                 const timeStr = scanDateObj.toLocaleTimeString("en-US", {
-                  hour: "2-digit", minute: "2-digit",
-                });
-                const sessionDate = new Date(log.sessions?.session_date).toLocaleDateString("en-US", {
-                  month: "short", day: "numeric", year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 });
 
+                // Parsing the session_date (TIMESTAMP)
+                const sessionDateObj = new Date(log.sessions?.session_date);
+                const sessionDateStr = sessionDateObj.toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                );
+                const sessionTimeStr = sessionDateObj.toLocaleTimeString(
+                  "en-US",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                );
+
                 return (
-                  <tr key={log.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <tr
+                    key={log.id}
+                    className="hover:bg-blue-50/30 transition-colors group"
+                  >
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
                         <CalendarDays size={14} className="text-blue-500" />
@@ -301,25 +339,33 @@ export default function CoachLogs() {
                       <div className="font-semibold text-slate-800 text-sm">
                         {log.sessions?.name || "Unknown Session"}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">{sessionDate}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {sessionDateStr} • {sessionTimeStr}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`inline-block px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(log.status)}`}>
+                      <span
+                        className={`inline-block px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(log.status)}`}
+                      >
                         {log.status.replace("_", " ")}
                       </span>
                     </td>
                   </tr>
                 );
               })}
-
               {paginatedLogs.length === 0 && !loading && (
                 <tr>
-                  <td colSpan="3" className="px-6 py-20 text-center text-slate-400">
+                  <td
+                    colSpan="3"
+                    className="px-6 py-20 text-center text-slate-400"
+                  >
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search size={32} className="text-slate-300" />
                     </div>
                     <p className="font-bold text-slate-600">No records found</p>
-                    <p className="text-sm mt-1">Try adjusting your search or filter options.</p>
+                    <p className="text-sm mt-1">
+                      Try adjusting your search or filter options.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -344,7 +390,9 @@ export default function CoachLogs() {
                 <ChevronLeft size={18} />
               </button>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
