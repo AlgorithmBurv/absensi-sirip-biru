@@ -36,6 +36,7 @@ function useAudioFeedback() {
       [0, 0.18].forEach((startOffset, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
+
         osc.connect(gain);
         gain.connect(ctx.destination);
 
@@ -57,6 +58,7 @@ function useAudioFeedback() {
       // Buzz rendah = "bzzz" error
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+
       osc.connect(gain);
       gain.connect(ctx.destination);
 
@@ -98,8 +100,8 @@ export default function ScanQR() {
   const [activeSessions, setActiveSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState("");
   const [scanStatus, setScanStatus] = useState({ type: "idle", message: "" });
-  const scannerRef = useRef(null);
 
+  const scannerRef = useRef(null);
   const { playSuccess, playError } = useAudioFeedback();
   const { successVibrate, errorVibrate } = useHapticFeedback();
 
@@ -115,6 +117,7 @@ export default function ScanQR() {
       if (error) toast.error("Failed to load active sessions.");
       else if (data) setActiveSessions(data);
     };
+
     fetchActiveSessions();
   }, []);
 
@@ -138,7 +141,15 @@ export default function ScanQR() {
 
       const scanner = new Html5QrcodeScanner(
         "reader",
-        { qrbox: { width: 280, height: 280 }, fps: 10, aspectRatio: 1.0, showTorchButtonIfSupported: true },
+        {
+          qrbox: { width: 280, height: 280 },
+          fps: 10,
+          aspectRatio: 1.0,
+          showTorchButtonIfSupported: true,
+          videoConstraints: {
+            facingMode: "environment",
+          },
+        },
         false,
       );
 
@@ -160,11 +171,19 @@ export default function ScanQR() {
 
             const { error: logError } = await supabase
               .from("attendance_logs")
-              .insert([{ session_id: selectedSession, student_id: student.id, status: "hadir_qr" }]);
+              .insert([
+                {
+                  session_id: selectedSession,
+                  student_id: student.id,
+                  status: "hadir_qr",
+                },
+              ]);
 
             if (logError) {
               if (logError.code === "23505")
-                throw new Error(`${student.users?.full_name || "Athlete"} is already checked in!`);
+                throw new Error(
+                  `${student.users?.full_name || "Athlete"} is already checked in!`,
+                );
               throw logError;
             }
 
@@ -205,7 +224,10 @@ export default function ScanQR() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans">
-      <Toaster position="top-right" toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{ style: { borderRadius: "16px", fontWeight: "500" } }}
+      />
 
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
@@ -225,8 +247,11 @@ export default function ScanQR() {
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
               <CalendarDays size={16} /> Gate Control
             </h2>
+
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-slate-500">Active Session</label>
+              <label className="text-[11px] font-bold text-slate-500">
+                Active Session
+              </label>
               <select
                 value={selectedSession}
                 onChange={(e) => {
@@ -237,7 +262,9 @@ export default function ScanQR() {
               >
                 <option value="">-- Select Active Gate --</option>
                 {activeSessions.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -246,7 +273,8 @@ export default function ScanQR() {
               <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-amber-700">
                 <Info size={18} className="flex-shrink-0 mt-0.5" />
                 <p className="text-xs font-medium">
-                  No active sessions found. Please create or open a session first in the <b>Sessions</b> menu.
+                  No active sessions found. Please create or open a session
+                  first in the <b>Sessions</b> menu.
                 </p>
               </div>
             )}
@@ -254,14 +282,19 @@ export default function ScanQR() {
 
           {/* System Status */}
           <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 p-6">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">System Status</h2>
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+              System Status
+            </h2>
+
             {selectedSession ? (
               <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
                 <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
-                <span className="text-sm font-bold">Scanner Active & Ready</span>
+                <span className="text-sm font-bold">
+                  Scanner Active & Ready
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-3 text-slate-500 bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -269,9 +302,6 @@ export default function ScanQR() {
                 <span className="text-sm font-bold">Scanner Offline</span>
               </div>
             )}
-
-            {/* Feedback Info */}
-   
           </div>
         </div>
 
@@ -282,29 +312,50 @@ export default function ScanQR() {
               <Camera size={16} /> Viewfinder
             </h2>
 
-            <div className={`flex-1 flex flex-col justify-center items-center relative z-10 ${!selectedSession ? "hidden" : "flex"}`}>
-              
+            <div
+              className={`flex-1 flex flex-col justify-center items-center relative z-10 ${!selectedSession ? "hidden" : "flex"}`}
+            >
               {/* ==================================================== */}
               {/* OVERLAY NOTIFIKASI SCAN + COOLDOWN INDICATOR         */}
               {/* ==================================================== */}
               {scanStatus.type !== "idle" && (
                 <div className="absolute inset-x-0 top-2 z-20 flex justify-center px-4 animate-in slide-in-from-top-4 fade-in duration-300">
-                  <div className={`px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-w-sm font-bold border backdrop-blur-md
+                  <div
+                    className={`px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-w-sm font-bold border backdrop-blur-md
                     ${scanStatus.type === "success" ? "bg-emerald-500/95 text-white border-emerald-400" : ""}
-                    ${scanStatus.type === "error"   ? "bg-red-500/95 text-white border-red-400" : ""}
-                    ${scanStatus.type === "info"    ? "bg-blue-600/95 text-white border-blue-400" : ""}
-                  `}>
+                    ${scanStatus.type === "error" ? "bg-red-500/95 text-white border-red-400" : ""}
+                    ${scanStatus.type === "info" ? "bg-blue-600/95 text-white border-blue-400" : ""}
+                  `}
+                  >
                     {/* ICON KIRI */}
-                    {scanStatus.type === "success" && <CheckCircle2 size={28} className="flex-shrink-0 animate-in zoom-in" />}
-                    {scanStatus.type === "error"   && <XCircle      size={28} className="flex-shrink-0 animate-in zoom-in" />}
-                    {scanStatus.type === "info"    && <ScanLine     size={28} className="flex-shrink-0 animate-pulse" />}
+                    {scanStatus.type === "success" && (
+                      <CheckCircle2
+                        size={28}
+                        className="flex-shrink-0 animate-in zoom-in"
+                      />
+                    )}
+                    {scanStatus.type === "error" && (
+                      <XCircle
+                        size={28}
+                        className="flex-shrink-0 animate-in zoom-in"
+                      />
+                    )}
+                    {scanStatus.type === "info" && (
+                      <ScanLine
+                        size={28}
+                        className="flex-shrink-0 animate-pulse"
+                      />
+                    )}
 
                     {/* TEKS TENGAH */}
                     <div className="flex-1 flex flex-col min-w-0">
-                      <span className="text-sm leading-tight truncate">{scanStatus.message}</span>
-                      
+                      <span className="text-sm leading-tight truncate">
+                        {scanStatus.message}
+                      </span>
+
                       {/* Sub-text Cooldown */}
-                      {(scanStatus.type === "success" || scanStatus.type === "error") && (
+                      {(scanStatus.type === "success" ||
+                        scanStatus.type === "error") && (
                         <span className="text-[11px] font-medium opacity-80 mt-0.5 font-mono">
                           Camera pausing...
                         </span>
@@ -317,22 +368,36 @@ export default function ScanQR() {
                     </div>
 
                     {/* CIRCULAR PROGRESS BAR (KANAN) */}
-                    {(scanStatus.type === "success" || scanStatus.type === "error") && (
+                    {(scanStatus.type === "success" ||
+                      scanStatus.type === "error") && (
                       <div className="relative flex items-center justify-center w-8 h-8 flex-shrink-0">
                         {/* Lingkaran Background */}
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" className="opacity-20" />
+                        <svg
+                          className="w-full h-full transform -rotate-90"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            fill="none"
+                            className="opacity-20"
+                          />
                           {/* Lingkaran Animasi (Berkurang) */}
-                          <circle 
-                            cx="12" 
-                            cy="12" 
-                            r="10" 
-                            stroke="currentColor" 
-                            strokeWidth="3" 
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="3"
                             fill="none"
                             strokeDasharray="63"
                             strokeLinecap="round"
-                            style={{ animation: 'cooldown-dash 2.5s linear forwards' }} 
+                            style={{
+                              animation: "cooldown-dash 2.5s linear forwards",
+                            }}
                           />
                         </svg>
                       </div>
@@ -356,9 +421,12 @@ export default function ScanQR() {
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                   <Video size={40} className="text-slate-300" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-700">Awaiting Gate Selection</h3>
+                <h3 className="text-lg font-bold text-slate-700">
+                  Awaiting Gate Selection
+                </h3>
                 <p className="text-sm mt-2 max-w-xs">
-                  Please select an active session on the left panel to initialize the camera system.
+                  Please select an active session on the left panel to
+                  initialize the camera system.
                 </p>
               </div>
             )}
@@ -367,12 +435,14 @@ export default function ScanQR() {
       </div>
 
       {/* CSS injection: Styling Html5-Qrcode & Keyframe Progress Bar */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         #reader { border: none !important; }
-        #reader button { 
-           background-color: #2563eb !important; color: white !important; border: none !important; 
-           padding: 8px 16px !important; border-radius: 8px !important; font-weight: bold !important; 
-           cursor: pointer !important; margin-top: 10px !important; transition: background 0.3s;
+        #reader button {
+            background-color: #2563eb !important; color: white !important; border: none !important;
+            padding: 8px 16px !important; border-radius: 8px !important; font-weight: bold !important;
+            cursor: pointer !important; margin-top: 10px !important; transition: background 0.3s;
         }
         #reader button:hover { background-color: #1d4ed8 !important; }
         #reader a { color: #60a5fa !important; text-decoration: none !important; }
@@ -383,7 +453,9 @@ export default function ScanQR() {
           0% { stroke-dashoffset: 0; }
           100% { stroke-dashoffset: 63; }
         }
-      `}} />
+      `,
+        }}
+      />
     </div>
   );
 }
