@@ -159,9 +159,15 @@ export default function Login() {
           <p className="text-xs text-slate-400">
             Having trouble accessing your account?
             <br />
-            <span className="text-blue-600 font-medium cursor-pointer hover:underline">
+            {/* LINK YANG SUDAH DIAKTIFKAN MENGGUNAKAN WA ATAU MAILTO */}
+            <a
+              href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20kesulitan%20login%20ke%20portal%20Siripbiru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 font-medium cursor-pointer hover:underline"
+            >
               Contact Club Administrator
-            </span>
+            </a>
           </p>
         </div>
       </div>
