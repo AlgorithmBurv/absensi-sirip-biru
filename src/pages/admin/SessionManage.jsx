@@ -83,14 +83,12 @@ const formatTimeOnly = (iso) => {
 // HELPER UNTUK WARNA STATUS ABSENSI
 const getStatusBadgeStyle = (status) => {
   if (!status) return "bg-slate-100 text-slate-500 border-slate-200";
-  
   const s = status.toLowerCase();
   if (s.includes("hadir_qr")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
   if (s.includes("hadir_manual")) return "bg-teal-100 text-teal-700 border-teal-200";
   if (s.includes("izin")) return "bg-blue-100 text-blue-700 border-blue-200";
   if (s.includes("sakit")) return "bg-amber-100 text-amber-700 border-amber-200";
   if (s.includes("alpa")) return "bg-rose-100 text-rose-700 border-rose-200";
-  
   return "bg-slate-100 text-slate-500 border-slate-200"; // Default (Belum absen)
 };
 
@@ -186,7 +184,6 @@ export default function SessionManage() {
           .in("id", expiredIds)
           .then();
       }
-
       setSessions(updatedData);
     }
     setLoading(false);
@@ -218,6 +215,7 @@ export default function SessionManage() {
       const matchTo = dateTo
         ? new Date(s.session_date) <= new Date(dateTo + "T23:59:59")
         : true;
+
       return matchSearch && matchStatus && matchFrom && matchTo;
     })
     .sort((a, b) => {
@@ -273,16 +271,33 @@ export default function SessionManage() {
     try {
       const { data: logs } = await supabase
         .from("attendance_logs")
-        .select("student_id, coach_id, status, scanned_at") 
+        .select("student_id, coach_id, status, scanned_at")
         .eq("session_id", s.id);
 
       let expectedStudents = [];
       if (s.class_ids && s.class_ids.length > 0) {
-        const { data: stdData } = await supabase
-          .from("students")
-          .select("id, nis, users(full_name), classes(name)")
-          .in("class_id", s.class_ids);
-        if (stdData) expectedStudents = stdData;
+        // PERBAIKAN: Ambil dari enrollments yang aktif pada kelas-kelas di sesi ini
+        const { data: enrollData } = await supabase
+          .from("student_enrollments")
+          .select("student_id, classes(name), students(id, nis, users(full_name))")
+          .in("class_id", s.class_ids)
+          .eq("status", "active");
+
+        if (enrollData) {
+          // Gunakan Map untuk mencegah duplikasi (jika siswa ikut >1 kelas yg sama-sama ada di sesi ini)
+          const uniqueMap = new Map();
+          enrollData.forEach((e) => {
+            if (e.students && !uniqueMap.has(e.students.id)) {
+              uniqueMap.set(e.students.id, {
+                id: e.students.id,
+                nis: e.students.nis,
+                users: e.students.users,
+                classes: e.classes, // Bawa nama kelas dari tabel kelas
+              });
+            }
+          });
+          expectedStudents = Array.from(uniqueMap.values());
+        }
       }
 
       let expectedCoaches = [];
@@ -296,6 +311,7 @@ export default function SessionManage() {
 
       const logMapStudent = {};
       const logMapCoach = {};
+
       logs?.forEach((log) => {
         if (log.student_id) logMapStudent[log.student_id] = { status: log.status, time: log.scanned_at }; 
         if (log.coach_id) logMapCoach[log.coach_id] = { status: log.status, time: log.scanned_at };
@@ -365,6 +381,7 @@ export default function SessionManage() {
         .from("sessions")
         .update(payload)
         .eq("id", currentId);
+
       if (!error) {
         toast.success("Session updated successfully", { id: loadingToast });
         setIsModalOpen(false);
@@ -375,6 +392,7 @@ export default function SessionManage() {
       const { error } = await supabase
         .from("sessions")
         .insert([{ ...payload, is_active: true }]);
+
       if (!error) {
         toast.success("Session created successfully", { id: loadingToast });
         setIsModalOpen(false);
@@ -414,6 +432,7 @@ export default function SessionManage() {
       .from("sessions")
       .update({ is_active: !currentStatus })
       .eq("id", id);
+
     if (!error) {
       toast.success(currentStatus ? "Session closed" : "Session activated", {
         id: loadingToast,
@@ -473,7 +492,6 @@ export default function SessionManage() {
               className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
             />
           </div>
-
           <div className="relative flex-shrink-0 sm:w-48">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Filter size={15} className="text-slate-400" />
@@ -488,7 +506,6 @@ export default function SessionManage() {
               <option value="closed">Closed Sessions</option>
             </select>
           </div>
-
           <button
             onClick={() => setSortOrder((p) => (p === "desc" ? "asc" : "desc"))}
             className="flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-3 px-4 rounded-2xl transition-all text-sm flex-shrink-0"
@@ -523,7 +540,6 @@ export default function SessionManage() {
             onChange={(e) => setDateTo(e.target.value)}
             className="flex-1 py-3 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-600 cursor-pointer"
           />
-
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -543,7 +559,6 @@ export default function SessionManage() {
             {filteredSessions.length} / {sessions.length} Results
           </span>
         </div>
-
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
@@ -603,9 +618,9 @@ export default function SessionManage() {
                       <button
                         onClick={() => toggleStatus(s.id, s.is_active)}
                         className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                          s.is_active 
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-rose-500 hover:text-white hover:border-rose-500" 
-                            : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
+                          s.is_active
+                             ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-rose-500 hover:text-white hover:border-rose-500"
+                             : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
                         }`}
                       >
                         <Power size={12} />
@@ -622,6 +637,7 @@ export default function SessionManage() {
                         >
                           <Eye size={16} />
                         </button>
+
                         <button
                           onClick={() => openEditModal(s)}
                           className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
@@ -639,6 +655,7 @@ export default function SessionManage() {
                   </tr>
                 );
               })}
+
               {paginatedSessions.length === 0 && !loading && (
                 <tr>
                   <td
@@ -769,6 +786,7 @@ export default function SessionManage() {
                               </td>
                             </tr>
                           ))}
+
                           {sessionDetails.students.length === 0 && (
                             <tr>
                               <td
@@ -824,6 +842,7 @@ export default function SessionManage() {
                               </td>
                             </tr>
                           ))}
+
                           {sessionDetails.coaches.length === 0 && (
                             <tr>
                               <td
@@ -894,7 +913,6 @@ export default function SessionManage() {
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner font-medium text-slate-700"
                     />
                   </div>
-
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                       Date & Time

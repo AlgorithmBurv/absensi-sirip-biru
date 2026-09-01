@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { QrCode, History, LogOut, Menu, CalendarDays } from "lucide-react";
+import { QrCode, History, LogOut, Menu, CalendarDays, CreditCard } from "lucide-react";
 
 export default function LayoutStudent() {
   const navigate = useNavigate();
@@ -14,6 +14,11 @@ export default function LayoutStudent() {
 
   const menuItems = [
     { name: "My QR Pass", path: "/student", icon: <QrCode size={22} /> },
+    {
+      name: "Enroll Class",
+      path: "/student/enroll",
+      icon: <CreditCard size={22} />,
+    },
     {
       name: "My Schedule",
       path: "/student/schedule",

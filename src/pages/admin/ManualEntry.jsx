@@ -43,9 +43,13 @@ export default function ManualEntry() {
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
+        // Fetch students beserta data enrollments (Many-to-Many)
         const { data: std, error: stdError } = await supabase
           .from("students")
-          .select("id, nis, class_id, users(full_name), classes(name)") // Memastikan class_id ditarik
+          .select(`
+            id, nis, users(full_name),
+            student_enrollments(id, class_id, status, classes(name, max_sessions))
+          `)
           .order("nis");
 
         const { data: cch, error: cchError } = await supabase
@@ -84,10 +88,12 @@ export default function ManualEntry() {
   let baseList = [];
   if (activeSessionData) {
     if (attendeeType === "student") {
-      // Filter siswa: cek apakah class_id siswa ada di dalam array class_ids sesi
-      baseList = students.filter((std) =>
-        activeSessionData.class_ids?.includes(std.class_id)
-      );
+      // Filter siswa: cek apakah siswa punya "active" enrollment di salah satu kelas sesi ini
+      baseList = students.filter((std) => {
+        return std.student_enrollments?.some(
+          (e) => e.status === "active" && activeSessionData.class_ids?.includes(e.class_id)
+        );
+      });
     } else {
       // Filter pelatih: cek apakah id pelatih ada di dalam array coach_ids sesi
       baseList = coaches.filter((cch) =>
@@ -154,6 +160,23 @@ export default function ManualEntry() {
       // Eksekusi semua proses ke database secara paralel
       const promises = selectedAttendees.map(async (attendeeId) => {
         const idField = attendeeType === "student" ? "student_id" : "coach_id";
+        let enrollmentId = null;
+        let maxSessions = 12;
+
+        // Jika student, cari enrollment_id yang relevan dengan sesi ini
+        if (attendeeType === "student") {
+          const studentData = students.find((s) => s.id === attendeeId);
+          const activeEnrollment = studentData?.student_enrollments?.find(
+            (e) => e.status === "active" && activeSessionData.class_ids?.includes(e.class_id)
+          );
+
+          if (activeEnrollment) {
+            enrollmentId = activeEnrollment.id;
+            maxSessions = activeEnrollment.classes?.max_sessions || 12;
+          } else {
+            throw new Error(`No active enrollment found for ${studentData?.users?.full_name}`);
+          }
+        }
 
         // Cek apakah log sudah ada
         const { data: existingLog, error: checkError } = await supabase
@@ -167,28 +190,52 @@ export default function ManualEntry() {
 
         if (existingLog) {
           // Update (Timpa status)
+          const updatePayload = {
+            status: form.status,
+            scanned_at: new Date().toISOString(),
+          };
+          if (enrollmentId) updatePayload.enrollment_id = enrollmentId;
+
           const { error: updateError } = await supabase
             .from("attendance_logs")
-            .update({
-              status: form.status,
-              scanned_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq("id", existingLog.id);
 
           if (updateError) throw updateError;
         } else {
           // Insert Baru
+          const insertPayload = {
+            session_id: form.session_id,
+            [idField]: attendeeId,
+            status: form.status,
+          };
+          if (enrollmentId) insertPayload.enrollment_id = enrollmentId;
+
           const { error: insertError } = await supabase
             .from("attendance_logs")
-            .insert([
-              {
-                session_id: form.session_id,
-                [idField]: attendeeId,
-                status: form.status,
-              },
-            ]);
+            .insert([insertPayload]);
 
           if (insertError) throw insertError;
+        }
+
+        // AUTO-COMPLETE PROGRESS CHECK (Hanya untuk Student dan Status Hadir)
+        if (
+          attendeeType === "student" &&
+          enrollmentId &&
+          (form.status === "hadir_manual" || form.status === "hadir_qr")
+        ) {
+          const { count: attendCount, error: countError } = await supabase
+            .from("attendance_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("enrollment_id", enrollmentId)
+            .in("status", ["hadir_qr", "hadir_manual"]);
+
+          if (!countError && attendCount >= maxSessions) {
+            await supabase
+              .from("student_enrollments")
+              .update({ status: "completed", completed_at: new Date().toISOString() })
+              .eq("id", enrollmentId);
+          }
         }
       });
 
@@ -307,12 +354,12 @@ export default function ManualEntry() {
                 {sessions.map((s) => {
                   // Format ke angka DD/MM/YYYY HH:mm
                   const dateObj = new Date(s.session_date);
-                  const day = String(dateObj.getDate()).padStart(2, '0');
-                  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                  const day = String(dateObj.getDate()).padStart(2, "0");
+                  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
                   const year = dateObj.getFullYear();
-                  const hours = String(dateObj.getHours()).padStart(2, '0');
-                  const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                  
+                  const hours = String(dateObj.getHours()).padStart(2, "0");
+                  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+
                   const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}`;
 
                   return (
@@ -461,7 +508,12 @@ export default function ManualEntry() {
                           </p>
                           <p className="text-xs text-slate-500 truncate mt-0.5">
                             {attendeeType === "student"
-                              ? `NIS: ${item.nis} • ${item.classes?.name || "No Class"}`
+                              ? `NIS: ${item.nis} • ${
+                                  item.student_enrollments
+                                    ?.filter((e) => e.status === "active")
+                                    ?.map((e) => e.classes?.name)
+                                    .join(", ") || "No Active Class"
+                                }`
                               : item.specialty || "Instructor"}
                           </p>
                         </div>

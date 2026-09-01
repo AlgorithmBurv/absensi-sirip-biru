@@ -11,7 +11,7 @@ import {
   History as HistoryIcon,
   UserCheck,
   Phone,
-  Copy // <-- Tambahan ikon Copy
+  Copy 
 } from "lucide-react";
 
 const TABS = [
@@ -36,43 +36,59 @@ export default function Schedule() {
         if (!savedUser) throw new Error("Session expired. Please login again.");
         const user = JSON.parse(savedUser);
 
-        // 1. Dapatkan class_id milik student ini
+        // 1. Dapatkan student dan semua kelas aktifnya (Many-to-Many)
         const { data: studentData, error: studentError } = await supabase
           .from("students")
-          .select("class_id")
+          .select(`
+            id,
+            student_enrollments(class_id, status)
+          `)
           .eq("user_id", user.id)
           .single();
 
-        if (studentError || !studentData) throw new Error("Athlete class data not found.");
+        if (studentError || !studentData) throw new Error("Athlete data not found.");
 
-        // 2. Tarik jadwal sesi yang mengikutsertakan class_id ini
-        const { data: sessionData, error: sessionError } = await supabase
-          .from("sessions")
-          .select("*")
-          .contains("class_ids", JSON.stringify([studentData.class_id]))
-          .order("session_date", { ascending: true });
+        // Ambil array class_id yang statusnya masih aktif
+        const activeClassIds = studentData.student_enrollments
+          ?.filter(e => e.status === "active")
+          .map(e => e.class_id) || [];
 
-        if (sessionError) throw sessionError;
+        // 2. Tarik jadwal sesi dan filter sesuai kelas atlet yang aktif
+        let sessionData = [];
+        if (activeClassIds.length > 0) {
+          const { data: allSessions, error: sessionError } = await supabase
+            .from("sessions")
+            .select("*")
+            .order("session_date", { ascending: true });
 
-        // 3. Tarik semua data pelatih (TAMBAHKAN phone_number)
+          if (sessionError) throw sessionError;
+
+          // Filter secara lokal untuk mencari irisan (intersection) array class_ids
+          sessionData = allSessions.filter((session) => {
+            if (!session.class_ids) return false;
+            // Pastikan sesi ini memuat minimal 1 kelas yang diikuti atlet
+            return session.class_ids.some(cId => activeClassIds.includes(cId));
+          });
+        }
+
+        // 3. Tarik semua data pelatih untuk mapping kontak
         const { data: coachData, error: coachError } = await supabase
           .from("coaches")
           .select("id, specialty, phone_number, users(full_name)");
 
         if (coachError) throw coachError;
 
-        // Buat map dictionary agar mudah mengambil detail pelatih berdasarkan ID-nya
         const cMap = {};
         coachData.forEach(c => {
           cMap[c.id] = { 
             name: c.users?.full_name, 
             specialty: c.specialty,
-            phone: c.phone_number // <-- Simpan nomor telepon
+            phone: c.phone_number 
           };
         });
 
         setCoachesMap(cMap);
-        setSessions(sessionData || []);
+        setSessions(sessionData);
       } catch (err) {
         toast.error("Failed to load schedule: " + err.message);
       } finally {
@@ -83,7 +99,6 @@ export default function Schedule() {
     fetchData();
   }, []);
 
-  // Handler untuk Copy Nomor Telepon
   const handleCopyPhone = (phoneNumber) => {
     if (!phoneNumber) return;
     navigator.clipboard.writeText(phoneNumber);
@@ -106,7 +121,6 @@ export default function Schedule() {
     past: sessions.filter((s) => new Date(s.session_date).getTime() < todayStart),
   };
 
-  // Filter & search
   let processedSessions = [...grouped[activeTab]];
 
   if (searchQuery) {
@@ -116,7 +130,6 @@ export default function Schedule() {
     );
   }
 
-  // Sorting
   if (activeTab === "upcoming" || activeTab === "today") {
     processedSessions.sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
   } else {
@@ -149,11 +162,7 @@ export default function Schedule() {
         </p>
       </div>
 
-      {/* TAB BAR & SEARCH CONTROLS */}
-      {/* Diubah menjadi flex-col sepenuhnya di mobile agar tab bisa digulir horizontal dan search bar berada di bawahnya */}
       <div className="max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        
-        {/* Tab Bar - Menambahkan custom-scrollbar jika ingin styling ekstra, dan memastikan bisa di-scroll horizontal */}
         <div className="flex gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-sm w-full sm:w-auto overflow-x-auto custom-scrollbar">
           {TABS.map(({ key, label, icon: Icon }) => {
             const count = grouped[key].length;
@@ -182,7 +191,6 @@ export default function Schedule() {
           })}
         </div>
 
-        {/* Search Bar - Mengambil lebar penuh di mobile */}
         <div className="relative w-full sm:w-72 flex-shrink-0">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search size={16} className="text-slate-400" />
@@ -197,7 +205,6 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* Session Cards */}
       <div className="max-w-7xl mx-auto">
         {processedSessions.length === 0 ? (
           <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 py-20 px-6 text-center text-slate-400">
@@ -215,15 +222,14 @@ export default function Schedule() {
             {processedSessions.map((session) => {
               const dateObj = new Date(session.session_date);
               
-              const dayName = dateObj.toLocaleDateString("en-US", { weekday: "short" }); // Singkat hari untuk mobile
+              const dayName = dateObj.toLocaleDateString("en-US", { weekday: "short" });
               const dateFull = dateObj.toLocaleDateString("en-US", {
-                day: "numeric", month: "short", year: "numeric", // Singkat bulan
+                day: "numeric", month: "short", year: "numeric",
               });
               const timeStr = dateObj.toLocaleTimeString("en-US", {
                 hour: "2-digit", minute: "2-digit",
               });
 
-              // Map coach_ids ke object pelatih lengkap
               const assignedCoaches = session.coach_ids?.map(id => coachesMap[id] || { name: "Unknown Coach", phone: "" }) || [];
 
               return (
@@ -242,7 +248,6 @@ export default function Schedule() {
                         <h3 className="font-bold text-slate-800 text-base md:text-lg leading-tight">
                           {session.name}
                         </h3>
-                        {/* Waktu dibungkus agar responsif */}
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs md:text-sm text-slate-600">
                           <div className="flex items-center gap-1.5">
                             <Clock size={12} className="text-slate-400 md:w-3.5 md:h-3.5" />
@@ -256,7 +261,6 @@ export default function Schedule() {
 
                   <div className="border-t border-slate-50" />
 
-                  {/* Bagian Pelatih (Coaches) & Kontak */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                       <UserCheck size={14} className="text-indigo-400" /> Instructors
@@ -267,7 +271,6 @@ export default function Schedule() {
                           <div key={i} className="flex flex-col bg-indigo-50/70 text-indigo-700 px-3 py-2 rounded-xl border border-indigo-100/50 flex-1 min-w-[140px] sm:flex-none">
                             <span className="text-xs font-bold truncate">{coach.name}</span>
                             
-                            {/* Tombol Copy Nomor HP */}
                             {coach.phone ? (
                               <button 
                                 onClick={() => handleCopyPhone(coach.phone)}

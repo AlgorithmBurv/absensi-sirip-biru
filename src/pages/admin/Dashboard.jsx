@@ -41,13 +41,16 @@ export default function Dashboard() {
       const { count: classCount } = await supabase
         .from("classes")
         .select("*", { count: "exact", head: true });
+
       const { count: studentCount } = await supabase
         .from("students")
         .select("*", { count: "exact", head: true });
+
       const { count: sessionCount } = await supabase
         .from("sessions")
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
+
       const { count: logCount } = await supabase
         .from("attendance_logs")
         .select("*", { count: "exact", head: true });
@@ -84,18 +87,20 @@ export default function Dashboard() {
             }),
             Attendance: trendMap[date],
           }));
+
         setTrendData(formattedTrend);
       }
 
-      // 3. Fetch Data for Class Distribution
-      const { data: studentsData } = await supabase
-        .from("students")
-        .select(`id, classes(name)`);
+      // 3. Fetch Data for Class Distribution (Many-to-Many via Enrollments)
+      const { data: enrollmentsData } = await supabase
+        .from("student_enrollments")
+        .select(`classes(name)`)
+        .eq("status", "active");
 
-      if (studentsData) {
+      if (enrollmentsData) {
         const distMap = {};
-        studentsData.forEach((std) => {
-          const className = std.classes?.name || "Unassigned";
+        enrollmentsData.forEach((enr) => {
+          const className = enr.classes?.name || "Unassigned";
           distMap[className] = (distMap[className] || 0) + 1;
         });
 
@@ -207,7 +212,6 @@ export default function Dashboard() {
               <TrendingUp size={20} />
             </div>
           </div>
-
           <div className="flex-1 w-full mt-4">
             {trendData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -283,14 +287,13 @@ export default function Dashboard() {
                 Athlete Distribution
               </h2>
               <p className="text-xs font-medium text-slate-400 mt-0.5">
-                Number of athletes per class
+                Number of athletes per active class
               </p>
             </div>
             <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
               <BarChart3 size={20} />
             </div>
           </div>
-
           <div className="flex-1 w-full mt-4">
             {classDistData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -335,7 +338,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                No class data available yet.
+                No active enrollment data available yet.
               </div>
             )}
           </div>

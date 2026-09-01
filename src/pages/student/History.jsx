@@ -14,7 +14,6 @@ import {
 export default function History() {
   const [logs, setLogs] = useState([]);
   const [coachesMap, setCoachesMap] = useState({});
-  const [studentClass, setStudentClass] = useState("");
   const [loading, setLoading] = useState(true);
 
   // States for Search, Filter, Sort, & Pagination
@@ -32,15 +31,14 @@ export default function History() {
         if (!savedUser) return;
         const user = JSON.parse(savedUser);
 
-        // 1. Dapatkan student_id dan nama kelas siswa ini
+        // 1. Dapatkan student_id
         const { data: student, error: studentError } = await supabase
           .from("students")
-          .select("id, classes(name)")
+          .select("id")
           .eq("user_id", user.id)
           .single();
 
         if (studentError || !student) throw new Error("Athlete data not found");
-        setStudentClass(student.classes?.name || "No Class");
 
         // 2. Tarik semua data pelatih untuk mapping nama berdasarkan coach_ids
         const { data: coachData } = await supabase
@@ -55,13 +53,14 @@ export default function History() {
         }
         setCoachesMap(cMap);
 
-        // 3. Tarik riwayat absensi (logs)
+        // 3. Tarik riwayat absensi (logs) beserta data enrollment untuk mengetahui kelasnya
         const { data: attendanceLogs, error } = await supabase
           .from("attendance_logs")
           .select(
             `
             id, status, scanned_at,
-            sessions ( name, session_date, coach_ids )
+            sessions ( name, session_date, coach_ids ),
+            student_enrollments ( classes ( name ) )
           `,
           )
           .eq("student_id", student.id)
@@ -89,9 +88,11 @@ export default function History() {
 
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
-    processedLogs = processedLogs.filter((log) =>
-      log.sessions?.name?.toLowerCase().includes(query),
-    );
+    processedLogs = processedLogs.filter((log) => {
+      const sessionMatch = log.sessions?.name?.toLowerCase().includes(query);
+      const classMatch = log.student_enrollments?.classes?.name?.toLowerCase().includes(query);
+      return sessionMatch || classMatch;
+    });
   }
 
   if (filterStatus !== "all") {
@@ -159,7 +160,7 @@ export default function History() {
           </div>
           <input
             type="text"
-            placeholder="Search session name..."
+            placeholder="Search session or class name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
@@ -251,6 +252,9 @@ export default function History() {
                     (id) => coachesMap[id] || "Unknown Coach",
                   ) || [];
 
+                // Nama kelas dinamis dari relasi enrollment_id
+                const dynamicClassName = log.student_enrollments?.classes?.name || "General / Legacy Class";
+
                 return (
                   <tr
                     key={log.id}
@@ -278,7 +282,7 @@ export default function History() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-blue-600 text-sm">
-                        {studentClass}
+                        {dynamicClassName}
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
                         <span className="font-medium">Coach:</span>{" "}

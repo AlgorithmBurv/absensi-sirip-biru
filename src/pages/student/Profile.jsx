@@ -28,12 +28,13 @@ export default function Profile() {
 
       const user = JSON.parse(savedUser);
 
+      // Tarik data profil beserta data kelas dari relasi Many-to-Many
       const { data, error } = await supabase
         .from("students")
         .select(`
           nis, qr_token, parent_name, age, address, phone_number, 
           users ( full_name, email ), 
-          classes ( name )
+          student_enrollments ( status, classes ( name, max_sessions ) )
         `)
         .eq("user_id", user.id)
         .single();
@@ -50,6 +51,9 @@ export default function Profile() {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Ekstrak list kelas aktif
+  const activeClasses = studentData?.student_enrollments?.filter(e => e.status === "active") || [];
 
   // Handle Download QR
   const handleDownloadQR = () => {
@@ -214,11 +218,23 @@ export default function Profile() {
               <h3 className="text-xl font-bold text-white mb-1 leading-tight">
                 {studentData.users?.full_name || "Unknown Athlete"}
               </h3>
-              <div className="text-cyan-300 text-[10px] font-medium tracking-widest uppercase mb-2">
+              <div className="text-cyan-300 text-[10px] font-medium tracking-widest uppercase mb-3">
                 {studentData.users?.email}
               </div>
-              <div className="inline-block px-3 py-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full text-blue-200 text-xs font-bold tracking-wider uppercase mt-1">
-                {studentData.classes?.name || "No Class"}
+              
+              {/* Display Active Classes */}
+              <div className="flex flex-wrap justify-center gap-2">
+                {activeClasses.length > 0 ? (
+                  activeClasses.map((ac, idx) => (
+                    <div key={idx} className="inline-block px-3 py-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full text-blue-200 text-[10px] font-bold tracking-wider uppercase">
+                      {ac.classes?.name}
+                    </div>
+                  ))
+                ) : (
+                  <div className="inline-block px-3 py-1 bg-red-500/20 backdrop-blur-sm border border-red-500/30 rounded-full text-red-200 text-[10px] font-bold tracking-wider uppercase">
+                    No Active Class
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -326,13 +342,23 @@ export default function Profile() {
                 
                 {/* READ ONLY FIELDS (Info Admin) */}
                 <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div>
+                  <div className="col-span-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">NIS (Read Only)</label>
                     <input disabled value={studentData.nis} className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none" />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Class (Read Only)</label>
-                    <input disabled value={studentData.classes?.name || '-'} className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none" />
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Active Classes (Read Only)</label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {activeClasses.length > 0 ? (
+                        activeClasses.map((ac, idx) => (
+                          <span key={idx} className="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
+                            {ac.classes?.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400">None</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

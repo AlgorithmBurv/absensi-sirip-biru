@@ -13,16 +13,14 @@ import {
 } from "lucide-react";
 
 // ============================================================
-// AUDIO ENGINE - Web Audio API (no file needed)
+// AUDIO ENGINE - Web Audio API
 // ============================================================
 function useAudioFeedback() {
   const audioCtx = useRef(null);
-
   const getCtx = useCallback(() => {
     if (!audioCtx.current) {
       audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
     }
-    // Resume jika suspended (browser autoplay policy)
     if (audioCtx.current.state === "suspended") {
       audioCtx.current.resume();
     }
@@ -32,20 +30,15 @@ function useAudioFeedback() {
   const playSuccess = useCallback(() => {
     try {
       const ctx = getCtx();
-      // Dua nada naik = "ding-ding" sukses
       [0, 0.18].forEach((startOffset, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-
         osc.connect(gain);
         gain.connect(ctx.destination);
-
         osc.type = "sine";
         osc.frequency.setValueAtTime(i === 0 ? 880 : 1100, ctx.currentTime + startOffset);
-
         gain.gain.setValueAtTime(0.35, ctx.currentTime + startOffset);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + 0.25);
-
         osc.start(ctx.currentTime + startOffset);
         osc.stop(ctx.currentTime + startOffset + 0.25);
       });
@@ -55,20 +48,15 @@ function useAudioFeedback() {
   const playError = useCallback(() => {
     try {
       const ctx = getCtx();
-      // Buzz rendah = "bzzz" error
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.connect(gain);
       gain.connect(ctx.destination);
-
       osc.type = "sawtooth";
       osc.frequency.setValueAtTime(160, ctx.currentTime);
       osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.35);
-
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.4);
     } catch (_) {}
@@ -86,10 +74,8 @@ function useHapticFeedback() {
       navigator.vibrate(pattern);
     }
   }, []);
-
-  const successVibrate = useCallback(() => vibrate([80, 60, 120]), [vibrate]);   // dua ketuk cepat
-  const errorVibrate   = useCallback(() => vibrate([300, 100, 300]), [vibrate]); // dua buzz panjang
-
+  const successVibrate = useCallback(() => vibrate([80, 60, 120]), [vibrate]);
+  const errorVibrate = useCallback(() => vibrate([300, 100, 300]), [vibrate]);
   return { successVibrate, errorVibrate };
 }
 
@@ -100,8 +86,8 @@ export default function ScanQR() {
   const [activeSessions, setActiveSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState("");
   const [scanStatus, setScanStatus] = useState({ type: "idle", message: "" });
-
   const scannerRef = useRef(null);
+
   const { playSuccess, playError } = useAudioFeedback();
   const { successVibrate, errorVibrate } = useHapticFeedback();
 
@@ -113,11 +99,9 @@ export default function ScanQR() {
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
-
       if (error) toast.error("Failed to load active sessions.");
       else if (data) setActiveSessions(data);
     };
-
     fetchActiveSessions();
   }, []);
 
@@ -157,9 +141,10 @@ export default function ScanQR() {
         async (decodedText) => {
           // Pause camera immediately
           scanner.pause(true);
-          setScanStatus({ type: "info", message: "Verifying QR Code..." });
+          setScanStatus({ type: "info", message: "Verifying QR Code & Progress..." });
 
           try {
+            // 1. Cari data student berdasarkan QR Token
             const { data: student, error: studentError } = await supabase
               .from("students")
               .select("id, users(full_name)")
@@ -169,31 +154,84 @@ export default function ScanQR() {
             if (studentError || !student)
               throw new Error("Invalid or Unregistered QR Pass");
 
+            // 2. Cek apakah student sudah absen di sesi ini (Mencegah Double Scan)
+            const { data: existingLog } = await supabase
+              .from("attendance_logs")
+              .select("id")
+              .eq("session_id", selectedSession)
+              .eq("student_id", student.id)
+              .maybeSingle();
+
+            if (existingLog) {
+              throw new Error(`${student.users?.full_name || "Athlete"} is already checked in!`);
+            }
+
+            // 3. Dapatkan konteks kelas dari Session yang dipilih
+            const sessionObj = activeSessions.find(s => s.id === selectedSession);
+            if (!sessionObj || !sessionObj.class_ids || sessionObj.class_ids.length === 0) {
+              throw new Error("Invalid session configuration. No classes assigned.");
+            }
+
+            // 4. Cari Enrollment aktif student untuk kelas yang ada di sesi ini
+            const { data: enrollments, error: enrollError } = await supabase
+              .from("student_enrollments")
+              .select("id, class_id, classes(name, max_sessions)")
+              .eq("student_id", student.id)
+              .eq("status", "active")
+              .in("class_id", sessionObj.class_ids)
+              .limit(1); // Ambil 1 enrollment yang cocok
+
+            if (enrollError || !enrollments || enrollments.length === 0) {
+              throw new Error("Athlete does not have an active enrollment for this session's class.");
+            }
+
+            const activeEnrollment = enrollments[0];
+
+            // 5. Insert Log Absensi dengan enrollment_id
             const { error: logError } = await supabase
               .from("attendance_logs")
-              .insert([
-                {
-                  session_id: selectedSession,
-                  student_id: student.id,
-                  status: "hadir_qr",
-                },
-              ]);
+              .insert([{
+                session_id: selectedSession,
+                student_id: student.id,
+                status: "hadir_qr",
+                enrollment_id: activeEnrollment.id
+              }]);
 
-            if (logError) {
-              if (logError.code === "23505")
-                throw new Error(
-                  `${student.users?.full_name || "Athlete"} is already checked in!`,
-                );
-              throw logError;
+            if (logError) throw logError;
+
+            // 6. Hitung Total Kehadiran untuk mengecek kelulusan (Progress)
+            const { count: attendCount, error: countError } = await supabase
+              .from("attendance_logs")
+              .select("*", { count: "exact", head: true })
+              .eq("enrollment_id", activeEnrollment.id)
+              .in("status", ["hadir_qr", "hadir_manual"]);
+
+            let isCompleted = false;
+            const maxSessions = activeEnrollment.classes.max_sessions || 12;
+
+            if (!countError && attendCount >= maxSessions) {
+              // Auto-Complete Class
+              await supabase
+                .from("student_enrollments")
+                .update({ status: 'completed', completed_at: new Date().toISOString() })
+                .eq("id", activeEnrollment.id);
+              isCompleted = true;
             }
 
             // -> SUKSES (suara + haptic + overlay)
             playSuccess();
             successVibrate();
+
+            let successMessage = `${student.users?.full_name} (${attendCount}/${maxSessions})`;
+            if (isCompleted) {
+              successMessage = `🎉 Congrats ${student.users?.full_name}! Class Completed!`;
+            }
+
             setScanStatus({
               type: "success",
-              message: `Check-in Success: ${student.users?.full_name || "Athlete"}`,
+              message: successMessage,
             });
+
           } catch (err) {
             // -> ERROR (suara + haptic + overlay)
             playError();
@@ -220,7 +258,7 @@ export default function ScanQR() {
         scannerRef.current = null;
       }
     };
-  }, [selectedSession, playSuccess, playError, successVibrate, errorVibrate]);
+  }, [selectedSession, activeSessions, playSuccess, playError, successVibrate, errorVibrate]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans">
@@ -236,7 +274,7 @@ export default function ScanQR() {
           QR Access Gate
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Scan athlete digital passes to record attendance.
+          Scan athlete digital passes to record attendance and track class progress.
         </p>
       </div>
 
@@ -247,7 +285,6 @@ export default function ScanQR() {
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
               <CalendarDays size={16} /> Gate Control
             </h2>
-
             <div className="space-y-2">
               <label className="text-[11px] font-bold text-slate-500">
                 Active Session
@@ -285,7 +322,6 @@ export default function ScanQR() {
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
               System Status
             </h2>
-
             {selectedSession ? (
               <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
                 <span className="relative flex h-3 w-3">
@@ -352,7 +388,6 @@ export default function ScanQR() {
                       <span className="text-sm leading-tight truncate">
                         {scanStatus.message}
                       </span>
-
                       {/* Sub-text Cooldown */}
                       {(scanStatus.type === "success" ||
                         scanStatus.type === "error") && (
@@ -447,7 +482,6 @@ export default function ScanQR() {
         #reader button:hover { background-color: #1d4ed8 !important; }
         #reader a { color: #60a5fa !important; text-decoration: none !important; }
         #reader__dashboard_section_csr span { color: white !important; }
-
         /* KEYFRAME ANIMASI COOLDOWN: Garis lingkaran berkurang hingga habis */
         @keyframes cooldown-dash {
           0% { stroke-dashoffset: 0; }

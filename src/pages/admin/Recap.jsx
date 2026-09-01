@@ -22,7 +22,6 @@ export default function Recap() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [attendeeType, setAttendeeType] = useState("student");
-
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -40,7 +39,8 @@ export default function Recap() {
           .select(
             `
             id, status, scanned_at,
-            students ( nis, users ( full_name ), classes ( name ) ),
+            students ( nis, users ( full_name ) ),
+            student_enrollments ( classes ( name ) ),
             sessions ( name, session_date )
           `,
           )
@@ -100,7 +100,7 @@ export default function Recap() {
           log.students?.nis?.toLowerCase().includes(query) ||
           log.students?.users?.full_name?.toLowerCase().includes(query) ||
           log.sessions?.name?.toLowerCase().includes(query) ||
-          log.students?.classes?.name?.toLowerCase().includes(query)
+          log.student_enrollments?.classes?.name?.toLowerCase().includes(query)
         );
       } else {
         return (
@@ -121,6 +121,7 @@ export default function Recap() {
       (log) => new Date(log.scanned_at) >= new Date(dateFrom + "T00:00:00"),
     );
   }
+
   if (dateTo) {
     processedLogs = processedLogs.filter(
       (log) => new Date(log.scanned_at) <= new Date(dateTo + "T23:59:59"),
@@ -150,7 +151,7 @@ export default function Recap() {
             "Scan Time": dateObj.toLocaleTimeString("en-GB"),
             NIS: log.students?.nis || "-",
             "Athlete Name": log.students?.users?.full_name || "Unknown",
-            Class: log.students?.classes?.name || "-",
+            Class: log.student_enrollments?.classes?.name || "-",
             Session: log.sessions?.name || "-",
             Status: log.status.toUpperCase().replace("_", " "),
           };
@@ -201,6 +202,7 @@ export default function Recap() {
         workbook,
         `Siripbiru_${attendeeType === "student" ? "Athlete" : "Coach"}_Recap_${new Date().getTime()}.xlsx`,
       );
+
       toast.success("Export to Excel successful!", { id: loadingToast });
     } catch (error) {
       console.error(error);
@@ -219,6 +221,7 @@ export default function Recap() {
 
   const hasActiveFilters =
     searchQuery || filterStatus !== "all" || dateFrom || dateTo;
+
   const clearAllFilters = () => {
     setSearchQuery("");
     setFilterStatus("all");
@@ -359,6 +362,7 @@ export default function Recap() {
               />
               {sortOrder === "desc" ? "Newest" : "Oldest"}
             </button>
+
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
@@ -382,7 +386,6 @@ export default function Recap() {
             {processedLogs.length} Records Found
           </span>
         </div>
-
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
@@ -451,7 +454,7 @@ export default function Recap() {
                                 {log.students?.nis || "-"}
                               </div>
                               <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mt-1">
-                                {log.students?.classes?.name || "-"}
+                                {log.student_enrollments?.classes?.name || "-"}
                               </div>
                             </>
                           ) : (
@@ -485,6 +488,7 @@ export default function Recap() {
                   </tr>
                 );
               })}
+
               {paginatedLogs.length === 0 && !loading && (
                 <tr>
                   <td

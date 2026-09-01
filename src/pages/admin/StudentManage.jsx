@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import { toast, Toaster } from "react-hot-toast";
 import {
   UserPlus, Edit2, Trash2, X, Phone, MapPin, User, Search,
-  Shield, Eye, EyeOff, ArrowUpDown, Filter, AlertTriangle,
+  Shield, Eye, EyeOff, ArrowUpDown, Filter, AlertTriangle, Layers,
+  CheckCircle2, XCircle
 } from "lucide-react";
 
 function ConfirmModal({ isOpen, onConfirm, onCancel, title, description, confirmLabel = "Delete", cancelLabel = "Cancel" }) {
@@ -36,6 +37,10 @@ export default function StudentManage() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Tab Status Registrasi (active, pending, rejected)
+  const [activeTab, setActiveTab] = useState("active");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterClass, setFilterClass] = useState("all");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -52,28 +57,57 @@ export default function StudentManage() {
   const closeConfirm = () => setConfirmModal({ isOpen: false, title: "", description: "", onConfirm: null });
 
   const initialFormState = {
-    full_name: "", password: "", email: "", nis: "", class_id: "",
+    full_name: "", password: "", email: "", nis: "", class_ids: [],
     parent_name: "", age: "", address: "", phone_number: "",
   };
   const [form, setForm] = useState(initialFormState);
 
   const fetchData = async () => {
     setLoading(true);
+    // Ambil data kelas
     const { data: cls } = await supabase.from("classes").select("*");
     if (cls) setClasses(cls);
 
-    const { data: std } = await supabase.from("students").select("*, classes(name), users(full_name, email)");
-    if (std) setStudents(std);
+    // Ambil data student beserta enrollments dan kelasnya, dan status akun user-nya
+    const { data: std, error } = await supabase
+      .from("students")
+      .select(`
+        *,
+        users(full_name, email, status),
+        student_enrollments(id, class_id, status, classes(name))
+      `);
+      
+    if (error) {
+      toast.error("Failed to load data: " + error.message);
+    } else if (std) {
+      // Map data agar mudah dirender
+      const formattedStudents = std.map(s => {
+        const activeClasses = s.student_enrollments?.filter(e => e.status === 'active') || [];
+        return {
+          ...s,
+          activeClasses
+        };
+      });
+      setStudents(formattedStudents);
+    }
+    
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const processedStudents = students
+  // Memisahkan data berdasarkan Tab (status user)
+  const filteredByTab = students.filter(s => s.users?.status === activeTab);
+
+  // Proses pencarian dan filter kelas dari tab yang aktif
+  const processedStudents = filteredByTab
     .filter((s) => {
       const q = searchQuery.toLowerCase();
       const matchSearch = !q || s.users?.full_name?.toLowerCase().includes(q) || s.nis?.toLowerCase().includes(q) || s.parent_name?.toLowerCase().includes(q) || s.phone_number?.toLowerCase().includes(q);
-      const matchClass = filterClass === "all" || s.class_id === filterClass;
+      
+      const hasClass = s.activeClasses.some(e => e.class_id === filterClass);
+      const matchClass = filterClass === "all" || hasClass;
+      
       return matchSearch && matchClass;
     })
     .sort((a, b) => {
@@ -85,36 +119,148 @@ export default function StudentManage() {
   const hasActiveFilters = searchQuery || filterClass !== "all";
   const clearFilters = () => { setSearchQuery(""); setFilterClass("all"); };
 
+  // ==========================================
+  // ACTION: APPROVE / REJECT USER
+  // ==========================================
+  const handleApprovalAction = async (userId, newStatus, studentName) => {
+    const actionLabel = newStatus === 'active' ? 'Approve' : 'Reject';
+    const actionColor = newStatus === 'active' ? 'emerald' : 'red';
+    
+    openConfirm({
+      title: `${actionLabel} Pendaftaran?`,
+      description: `Apakah Anda yakin ingin ${actionLabel.toLowerCase()} pendaftaran atas nama ${studentName}?`,
+      confirmLabel: `Yes, ${actionLabel}`,
+      onConfirm: async () => {
+        closeConfirm();
+        const loadingToast = toast.loading(`Sedang memproses...`);
+        
+        try {
+          const { error } = await supabase
+            .from("users")
+            .update({ status: newStatus })
+            .eq("id", userId);
+            
+          if (error) throw error;
+          
+          toast.success(`Akun berhasil di-${actionLabel.toLowerCase()}`, { id: loadingToast });
+          fetchData();
+        } catch (error) {
+          toast.error(`Gagal memproses: ${error.message}`, { id: loadingToast });
+        }
+      },
+    });
+  };
+
   const openAddModal = () => {
     setForm(initialFormState);
     setIsEditing(false); setCurrentId(null); setCurrentUserId(null); setShowPassword(false); setIsModalOpen(true);
   };
 
   const openEditModal = (s) => {
-    setForm({ full_name: s.users?.full_name || "", email: s.users?.email || "", password: "", nis: s.nis, class_id: s.class_id, parent_name: s.parent_name || "", age: s.age || "", address: s.address || "", phone_number: s.phone_number || "" });
+    const currentClassIds = s.activeClasses.map(c => c.class_id);
+    
+    setForm({ 
+      full_name: s.users?.full_name || "", 
+      email: s.users?.email || "", 
+      password: "", 
+      nis: s.nis, 
+      class_ids: currentClassIds, 
+      parent_name: s.parent_name || "", 
+      age: s.age || "", 
+      address: s.address || "", 
+      phone_number: s.phone_number || "" 
+    });
+    
     setIsEditing(true); setCurrentId(s.id); setCurrentUserId(s.user_id); setShowPassword(false); setIsModalOpen(true);
+  };
+
+  const toggleCheckboxClass = (classId) => {
+    setForm(prev => {
+      if (prev.class_ids.includes(classId)) {
+        return { ...prev, class_ids: prev.class_ids.filter(id => id !== classId) };
+      } else {
+        return { ...prev, class_ids: [...prev.class_ids, classId] };
+      }
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const loadingToast = toast.loading(isEditing ? "Updating record..." : "Creating account & athlete profile...");
+
     try {
       if (isEditing) {
+        // 1. Update Users Table
         const userUpdateData = { full_name: form.full_name, email: form.email };
         if (form.password) userUpdateData.password = form.password;
         const { error: userError } = await supabase.from("users").update(userUpdateData).eq("id", currentUserId);
         if (userError) throw userError;
 
-        const { error: studentError } = await supabase.from("students").update({ nis: form.nis, class_id: form.class_id, parent_name: form.parent_name, phone_number: form.phone_number, address: form.address, age: form.age ? parseInt(form.age) : null }).eq("id", currentId);
+        // 2. Update Students Table
+        const { error: studentError } = await supabase.from("students").update({ 
+          nis: form.nis, 
+          parent_name: form.parent_name, 
+          phone_number: form.phone_number, 
+          address: form.address, 
+          age: form.age ? parseInt(form.age) : null 
+        }).eq("id", currentId);
         if (studentError) throw studentError;
+
+        // 3. Update Enrollments (Logika Sinkronisasi Many-to-Many)
+        const { data: currentEnrollments } = await supabase
+          .from("student_enrollments")
+          .select("*")
+          .eq("student_id", currentId)
+          .eq("status", "active");
+
+        const currentClassIds = currentEnrollments?.map(e => e.class_id) || [];
+        const newClassIds = form.class_ids;
+
+        const toDrop = currentEnrollments.filter(e => !newClassIds.includes(e.class_id));
+        if (toDrop.length > 0) {
+          const dropIds = toDrop.map(e => e.id);
+          await supabase.from("student_enrollments").update({ status: "dropped" }).in("id", dropIds);
+        }
+
+        const toAdd = newClassIds.filter(id => !currentClassIds.includes(id));
+        if (toAdd.length > 0) {
+          const insertPayload = toAdd.map(classId => ({
+            student_id: currentId,
+            class_id: classId,
+            status: "active"
+          }));
+          await supabase.from("student_enrollments").insert(insertPayload);
+        }
 
         toast.success("Information updated successfully", { id: loadingToast });
       } else {
-        const { data: newUser, error: userError } = await supabase.from("users").insert([{ email: form.email, password: form.password, full_name: form.full_name, role: "student" }]).select().single();
+        // 1. Insert User (Langsung aktif karena dibuat oleh admin)
+        const { data: newUser, error: userError } = await supabase.from("users").insert([{ 
+          email: form.email, password: form.password, full_name: form.full_name, role: "student", status: "active"
+        }]).select().single();
         if (userError) throw new Error("Failed to create User. Email might already be registered. (" + userError.message + ")");
 
-        const { error: studentError } = await supabase.from("students").insert([{ nis: form.nis, class_id: form.class_id, parent_name: form.parent_name, phone_number: form.phone_number, address: form.address, qr_token: uuidv4(), user_id: newUser.id, age: form.age ? parseInt(form.age) : null }]);
+        // 2. Insert Student
+        const { data: newStudent, error: studentError } = await supabase.from("students").insert([{ 
+          nis: form.nis, 
+          parent_name: form.parent_name, 
+          phone_number: form.phone_number, 
+          address: form.address, 
+          qr_token: uuidv4(), 
+          user_id: newUser.id, 
+          age: form.age ? parseInt(form.age) : null 
+        }]).select().single();
         if (studentError) { await supabase.from("users").delete().eq("id", newUser.id); throw studentError; }
+
+        // 3. Insert Enrollments
+        if (form.class_ids.length > 0) {
+          const enrollments = form.class_ids.map(classId => ({
+            student_id: newStudent.id,
+            class_id: classId,
+            status: "active"
+          }));
+          await supabase.from("student_enrollments").insert(enrollments);
+        }
 
         toast.success("Account & Athlete registered successfully", { id: loadingToast });
       }
@@ -128,7 +274,7 @@ export default function StudentManage() {
   const handleDelete = (id) => {
     openConfirm({
       title: "Delete This Athlete?",
-      description: "This action is permanent and cannot be undone. All athlete profile data will be removed.",
+      description: "This action is permanent and cannot be undone. All athlete profile data and enrollments will be removed.",
       onConfirm: async () => {
         closeConfirm();
         const loadingToast = toast.loading("Deleting record...");
@@ -137,6 +283,13 @@ export default function StudentManage() {
         else toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
       },
     });
+  };
+
+  // Helper untuk Badge Status
+  const counts = {
+    active: students.filter(s => s.users?.status === 'active').length,
+    pending: students.filter(s => s.users?.status === 'pending').length,
+    rejected: students.filter(s => s.users?.status === 'rejected').length,
   };
 
   return (
@@ -161,7 +314,7 @@ export default function StudentManage() {
             Athlete Registry
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Manage student profiles, parent contact, and QR identifiers.
+            Manage student profiles, parent contact, and multi-class enrollments.
           </p>
         </div>
         <button
@@ -169,6 +322,45 @@ export default function StudentManage() {
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
           <UserPlus size={18} /> New Registration
+        </button>
+      </div>
+
+      {/* TABS NAVIGATION */}
+      <div className="max-w-7xl mx-auto mb-6 flex gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-sm w-full sm:w-fit overflow-x-auto custom-scrollbar">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 whitespace-nowrap flex-1 sm:flex-none
+            ${activeTab === 'active' ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}
+          `}
+        >
+          <CheckCircle2 size={16} /> Active Athletes
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ${activeTab === 'active' ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+            {counts.active}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 whitespace-nowrap flex-1 sm:flex-none
+            ${activeTab === 'pending' ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}
+          `}
+        >
+          <AlertTriangle size={16} /> Pending Approval
+          {counts.pending > 0 && (
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ${activeTab === 'pending' ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600"}`}>
+              {counts.pending}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('rejected')}
+          className={`relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 whitespace-nowrap flex-1 sm:flex-none
+            ${activeTab === 'rejected' ? "bg-red-500 text-white shadow-lg shadow-red-500/30" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}
+          `}
+        >
+          <XCircle size={16} /> Rejected
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ${activeTab === 'rejected' ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+            {counts.rejected}
+          </span>
         </button>
       </div>
 
@@ -226,9 +418,11 @@ export default function StudentManage() {
       {/* Table */}
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
-          <h2 className="font-bold text-slate-800">Data Inventory</h2>
+          <h2 className="font-bold text-slate-800">
+            {activeTab === 'pending' ? "Needs Approval" : activeTab === 'rejected' ? "Rejected Registrations" : "Data Inventory"}
+          </h2>
           <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
-            {processedStudents.length} / {students.length} Athletes
+            {processedStudents.length} {activeTab} Records
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -245,25 +439,33 @@ export default function StudentManage() {
               {processedStudents.map((s) => (
                 <tr
                   key={s.id}
-                  className="hover:bg-blue-50/30 transition-colors"
+                  className={`transition-colors ${activeTab === 'pending' ? 'hover:bg-amber-50/30' : 'hover:bg-blue-50/30'}`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                        ${activeTab === 'pending' ? 'bg-amber-100 text-amber-600' : activeTab === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                         <User size={18} />
                       </div>
                       <div>
                         <div className="font-bold text-slate-800">
                           {s.users?.full_name || "No Name Found"}
                         </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          NIS:{" "}
-                          <span className="font-mono bg-slate-100 px-1 rounded">
-                            {s.nis}
-                          </span>
+                        <div className="text-xs text-slate-500 mt-0.5 mb-1.5 flex items-center gap-1.5">
+                          NIS: <span className="font-mono bg-slate-100 px-1 rounded">{s.nis}</span>
                         </div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mt-1">
-                          {s.classes?.name}
+                        <div className="flex flex-wrap gap-1">
+                          {s.activeClasses.length > 0 ? (
+                            s.activeClasses.map((ac, idx) => (
+                              <span key={idx} className="text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
+                                {ac.classes?.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full">
+                              No Class Assigned
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -272,7 +474,7 @@ export default function StudentManage() {
                     <div className="text-sm font-semibold text-slate-700">
                       {s.parent_name || "N/A"}
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-400 mt-0.5">
                       {s.age ? `${s.age} yrs old` : ""}
                     </div>
                   </td>
@@ -290,23 +492,44 @@ export default function StudentManage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => openEditModal(s)}
-                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s.id)}
-                        className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    
+                    {/* BUTTONS SESUAI DENGAN TAB AKTIF */}
+                    {activeTab === 'pending' ? (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleApprovalAction(s.user_id, 'active', s.users?.full_name)}
+                          className="px-4 py-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm font-bold text-xs flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 size={16} /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleApprovalAction(s.user_id, 'rejected', s.users?.full_name)}
+                          className="px-4 py-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm font-bold text-xs flex items-center gap-1.5"
+                        >
+                          <XCircle size={16} /> Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openEditModal(s)}
+                          className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
+
                   </td>
                 </tr>
               ))}
+
               {processedStudents.length === 0 && !loading && (
                 <tr>
                   <td
@@ -314,15 +537,15 @@ export default function StudentManage() {
                     className="px-6 py-16 text-center text-slate-400"
                   >
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Search size={32} className="text-slate-300" />
+                      {activeTab === 'pending' ? <AlertTriangle size={32} className="text-amber-300" /> : <Search size={32} className="text-slate-300" />}
                     </div>
                     <p className="font-bold text-slate-600">
-                      No athletes found
+                      {activeTab === 'pending' ? "Tidak ada pendaftar baru" : "Data tidak ditemukan"}
                     </p>
                     <p className="text-sm mt-1">
                       {hasActiveFilters
                         ? "Try adjusting your search or filter."
-                        : "Start by adding a new registration."}
+                        : activeTab === 'pending' ? "Antrean persetujuan kosong." : "Data kosong."}
                     </p>
                   </td>
                 </tr>
@@ -332,7 +555,7 @@ export default function StudentManage() {
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL (Hanya Tampil Saat Add / Edit) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 py-10 overflow-y-auto">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto">
@@ -431,7 +654,7 @@ export default function StudentManage() {
                 <div className="flex items-center gap-2 mb-4 text-slate-800">
                   <User size={16} className="text-blue-500" />
                   <h4 className="font-bold uppercase tracking-wider text-xs">
-                    Athlete Profile
+                    Athlete Profile & Class Enrollment
                   </h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
@@ -449,26 +672,36 @@ export default function StudentManage() {
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Class Level
+                  
+                  {/* Multi-Select Class */}
+                  <div className="space-y-3 row-span-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 ml-1">
+                      <Layers size={14} className="text-blue-500" /> 
+                      Enroll to Classes
                     </label>
-                    <select
-                      required
-                      value={form.class_id}
-                      onChange={(e) =>
-                        setForm({ ...form, class_id: e.target.value })
-                      }
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
-                    >
-                      <option value="">-- Select Class --</option>
+                    <div className="flex flex-col gap-2 p-4 border border-slate-100 bg-slate-50 rounded-2xl max-h-[160px] overflow-y-auto">
                       {classes.map((c) => (
-                        <option key={c.id} value={c.id}>
+                        <label
+                          key={c.id}
+                          className="flex items-center gap-3 text-sm font-medium text-slate-700 cursor-pointer hover:text-blue-600 transition-colors p-1"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.class_ids.includes(c.id)}
+                            onChange={() => toggleCheckboxClass(c.id)}
+                            className="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                          />
                           {c.name}
-                        </option>
+                        </label>
                       ))}
-                    </select>
+                      {classes.length === 0 && (
+                        <span className="text-xs text-slate-400">
+                          No classes available.
+                        </span>
+                      )}
+                    </div>
                   </div>
+
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                       Parent / Guardian Name
@@ -482,6 +715,7 @@ export default function StudentManage() {
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
                     />
                   </div>
+                  
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                       Age (Years)
@@ -509,6 +743,7 @@ export default function StudentManage() {
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner"
                     />
                   </div>
+
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                       Complete Home Address

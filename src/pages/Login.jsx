@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast, Toaster } from "react-hot-toast";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 
@@ -9,7 +9,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -29,6 +28,18 @@ export default function Login() {
         throw new Error("Invalid email address or password.");
       }
 
+      // ==========================================
+      // PENGECEKAN STATUS APPROVAL REGISTRASI
+      // ==========================================
+      if (userData.status === "pending") {
+        throw new Error("Akun Anda sedang dalam proses peninjauan oleh admin.");
+      }
+
+      if (userData.status === "rejected") {
+        throw new Error("Pendaftaran akun Anda ditolak. Silakan mendaftar ulang.");
+      }
+
+      // Jika status 'active', proses login dilanjutkan
       const { password: _, ...safeUser } = userData;
       localStorage.setItem("user_session", JSON.stringify(safeUser));
 
@@ -155,20 +166,31 @@ export default function Login() {
         </form>
 
         {/* Footer info */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-slate-400">
-            Having trouble accessing your account?
-            <br />
-            {/* LINK YANG SUDAH DIAKTIFKAN MENGGUNAKAN WA ATAU MAILTO */}
-            <a
-              href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20kesulitan%20login%20ke%20portal%20Siripbiru"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 font-medium cursor-pointer hover:underline"
+        <div className="mt-8 text-center space-y-4">
+          <p className="text-sm text-slate-600 font-medium">
+            Don't have an account?{" "}
+            <Link
+              to="/register"
+              className="text-blue-600 font-bold hover:underline transition-all"
             >
-              Contact Club Administrator
-            </a>
+              Register Here
+            </Link>
           </p>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs text-slate-400">
+              Having trouble accessing your account?
+              <br />
+              <a
+                href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20kesulitan%20login%20ke%20portal%20Siripbiru"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 font-medium cursor-pointer hover:underline mt-1 inline-block"
+              >
+                Contact Club Administrator
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

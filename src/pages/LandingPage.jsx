@@ -43,6 +43,8 @@ export default function LandingPage() {
       behavior: "smooth",
     });
 
+  
+
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans overflow-x-hidden scroll-smooth relative">
       <Navbar />

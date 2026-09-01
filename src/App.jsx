@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // Komponen Utama
 import LandingPage from "./pages/LandingPage";
 import Login from './pages/Login';
+import Register from './pages/Register';
 import AuthGuard from './components/AuthGuard';
 import LayoutAdmin from './components/LayoutAdmin';
 import LayoutStudent from './components/LayoutStudent';
@@ -10,10 +11,11 @@ import LayoutCoach from "./components/LayoutCoach";
 
 // Halaman Admin
 import Dashboard from './pages/admin/Dashboard';
-import LandingManage from './pages/admin/LandingManage'; // <-- IMPORT BARU
+import LandingManage from './pages/admin/LandingManage';
 import ClassManage from './pages/admin/ClassManage';
 import StudentManage from './pages/admin/StudentManage';
 import CoachManage from "./pages/admin/CoachManage";
+import Payments from './pages/admin/Payments'; // <-- IMPORT BARU
 import SessionManage from './pages/admin/SessionManage';
 import ScanQR from './pages/admin/ScanQR';
 import ManualEntry from './pages/admin/ManualEntry';
@@ -21,6 +23,7 @@ import Recap from './pages/admin/Recap';
 
 // Halaman Student
 import Profile from './pages/student/Profile';
+import Enrollment from './pages/student/Enrollment'; // <-- IMPORT BARU
 import History from './pages/student/History';
 import Schedule from "./pages/student/Schedule";
 
@@ -35,6 +38,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* ============================================== */}
         {/* RUTE ADMIN                                     */}
@@ -48,11 +52,11 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="landing" element={<LandingManage />} />{" "}
-          {/* <-- RUTE BARU */}
+          <Route path="landing" element={<LandingManage />} />
           <Route path="classes" element={<ClassManage />} />
           <Route path="students" element={<StudentManage />} />
           <Route path="coaches" element={<CoachManage />} />
+          <Route path="payments" element={<Payments />} /> {/* <-- ROUTE BARU */}
           <Route path="sessions" element={<SessionManage />} />
           <Route path="scan" element={<ScanQR />} />
           <Route path="manual-entry" element={<ManualEntry />} />
@@ -71,6 +75,7 @@ function App() {
           }
         >
           <Route index element={<Profile />} />
+          <Route path="enroll" element={<Enrollment />} /> {/* <-- ROUTE BARU */}
           <Route path="history" element={<History />} />
           <Route path="schedule" element={<Schedule />} />
         </Route>

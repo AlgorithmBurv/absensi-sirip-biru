@@ -10,6 +10,8 @@ import {
   Search,
   Bookmark,
   AlertTriangle,
+  CreditCard,
+  Users
 } from "lucide-react";
 
 function ConfirmModal({
@@ -65,7 +67,14 @@ export default function ClassManage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
-  const [form, setForm] = useState({ name: "" });
+  
+  // Update Form State to include price and capacity
+  const [form, setForm] = useState({ 
+    name: "", 
+    max_sessions: 12,
+    price: 0,
+    max_capacity: 20
+  });
 
   const [confirmModal, setConfirmModal] = useState({
     open: false,
@@ -89,14 +98,19 @@ export default function ClassManage() {
   }, []);
 
   const openAddModal = () => {
-    setForm({ name: "" });
+    setForm({ name: "", max_sessions: 12, price: "", max_capacity: 20 });
     setIsEditing(false);
     setCurrentId(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (c) => {
-    setForm({ name: c.name });
+    setForm({ 
+      name: c.name, 
+      max_sessions: c.max_sessions || 12,
+      price: c.price || 0,
+      max_capacity: c.max_capacity || 20
+    });
     setIsEditing(true);
     setCurrentId(c.id);
     setIsModalOpen(true);
@@ -108,10 +122,17 @@ export default function ClassManage() {
       isEditing ? "Updating class..." : "Creating new class...",
     );
 
+    const payload = { 
+      name: form.name, 
+      max_sessions: parseInt(form.max_sessions) || 12,
+      price: parseFloat(form.price) || 0,
+      max_capacity: parseInt(form.max_capacity) || 20
+    };
+
     if (isEditing) {
       const { error } = await supabase
         .from("classes")
-        .update({ name: form.name })
+        .update(payload)
         .eq("id", currentId);
       if (!error) {
         toast.success("Class updated successfully", { id: loadingToast });
@@ -122,7 +143,7 @@ export default function ClassManage() {
     } else {
       const { error } = await supabase
         .from("classes")
-        .insert([{ name: form.name }]);
+        .insert([payload]);
       if (!error) {
         toast.success("Class created successfully", { id: loadingToast });
         setIsModalOpen(false);
@@ -150,6 +171,15 @@ export default function ClassManage() {
       fetchClasses();
     } else
       toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
+  };
+
+  // Helper Formatting Rupiah
+  const formatRupiah = (number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(number);
   };
 
   return (
@@ -183,7 +213,7 @@ export default function ClassManage() {
             Class Levels
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Manage training groups and class categories.
+            Manage training groups, capacities, and pricing.
           </p>
         </div>
         <button
@@ -204,10 +234,12 @@ export default function ClassManage() {
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[600px]">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
                 <th className="px-8 py-4">Class Details</th>
+                <th className="px-6 py-4">Pricing</th>
+                <th className="px-6 py-4">Capacity limit</th>
                 <th className="px-8 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -226,10 +258,22 @@ export default function ClassManage() {
                         <div className="font-bold text-slate-800 text-base">
                           {c.name}
                         </div>
-                        <div className="text-xs text-slate-400 mt-0.5 font-medium flex items-center gap-1">
-                          <Bookmark size={12} /> Registry Group
+                        <div className="text-xs text-slate-400 mt-0.5 font-medium flex items-center gap-1.5">
+                          <Bookmark size={12} className="text-blue-500" /> Max {c.max_sessions || 12} Sessions
                         </div>
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-emerald-600 text-sm flex items-center gap-1.5">
+                      <CreditCard size={14} className="text-emerald-500" />
+                      {formatRupiah(c.price)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="font-medium text-slate-600 text-sm flex items-center gap-1.5">
+                      <Users size={14} className="text-indigo-400" />
+                      {c.max_capacity} Students
                     </div>
                   </td>
                   <td className="px-8 py-5 text-right">
@@ -254,7 +298,7 @@ export default function ClassManage() {
               {classes.length === 0 && !loading && (
                 <tr>
                   <td
-                    colSpan="2"
+                    colSpan="4"
                     className="px-6 py-16 text-center text-slate-400"
                   >
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -275,7 +319,7 @@ export default function ClassManage() {
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit2 size={24} /> : <Plus size={24} />}
@@ -292,18 +336,71 @@ export default function ClassManage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-8">
-              <div className="space-y-2 mb-8">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Class
-                </label>
-                <input
-                  required
-                  autoFocus
-                  placeholder="e.g. XII IPA 1 or Beginner Class"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner font-medium text-slate-700"
-                />
+              <div className="space-y-5 mb-8">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                    Class Name
+                  </label>
+                  <input
+                    required
+                    autoFocus
+                    placeholder="e.g. Beginner Class"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner font-medium text-slate-700"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                      Max Target Sessions
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 12"
+                      value={form.max_sessions}
+                      onChange={(e) => setForm({ ...form, max_sessions: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner font-medium text-slate-700"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                      Capacity (Max Students)
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 20"
+                      value={form.max_capacity}
+                      onChange={(e) => setForm({ ...form, max_capacity: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-inner font-medium text-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                    Enrollment Price (IDR)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 350000"
+                      value={form.price}
+                      onChange={(e) => setForm({ ...form, price: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all shadow-inner font-bold text-emerald-700"
+                    />
+                  </div>
+                </div>
+
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">

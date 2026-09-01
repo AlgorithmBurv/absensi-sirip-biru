@@ -52,19 +52,57 @@ const LinkedinIcon = ({ size = 16 }) => (
 );
 
 // ===== COACH CARD COMPONENT =====
-function CoachCard({ c }) {
+function CoachCard({ c, isTouch }) {
+  const [flipped, setFlipped] = useState(false);
+  const imgRef = useRef(null);
+  const [imgSrc, setImgSrc] = useState("");
+
+  useEffect(() => {
+    // lazy-load image when card is visible
+    if (!imgRef.current) return;
+    const el = imgRef.current;
+    if (el.getAttribute("data-src") && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setImgSrc(el.getAttribute("data-src"));
+            io.unobserve(el);
+          }
+        });
+      });
+      io.observe(el);
+      return () => io.disconnect();
+    }
+    // fallback
+    setImgSrc(el.getAttribute("data-src") || el.src);
+  }, []);
+
+  const handleToggle = () => setFlipped((v) => !v);
+
   return (
     <div className="cursor-pointer">
-      <div className="flip-card w-full aspect-[4/5] mb-6">
+      <div className={`flip-card w-full aspect-[4/5] mb-6 ${flipped ? "is-flipped" : ""}`}>
         <div className="flip-card-inner">
           {/* DEPAN */}
-          <div className="flip-card-front group">
+          <div
+            className="flip-card-front group"
+            onClick={handleToggle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleToggle();
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`Lihat detail ${c.name}`}
+          >
             <div className="relative w-full h-full">
               <div className="absolute inset-0 bg-[#00E5FF] translate-x-0 translate-y-0 group-hover:translate-x-4 group-hover:translate-y-4 transition-transform duration-500 ease-out z-0"></div>
               <div className="relative z-10 w-full h-full overflow-hidden bg-slate-100">
                 <img
-                  src={c.photo}
+                  ref={imgRef}
+                  data-src={c.photo}
+                  src={imgSrc || ""}
                   alt={c.name}
+                  loading="lazy"
                   className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F]/80 to-transparent"></div>
@@ -81,6 +119,11 @@ function CoachCard({ c }) {
                     Lihat Profil
                   </p>
                 </div>
+                {isTouch && (
+                  <div className="absolute top-4 left-4 z-20 bg-black/40 text-white text-xs px-2 py-1 rounded">
+                    Tap untuk detail
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -189,8 +232,16 @@ function CoachCard({ c }) {
 // ===== MAIN COMPONENT =====
 export default function Coach() {
   const [coaches, setCoaches] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(3);
+  const [transitionEnabled, setTransitionEnabled] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const containerRef = useRef(null);
+  const autoplayRef = useRef(null);
   const touchStartX = useRef(null);
+  const resizeTimeout = useRef(null);
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -235,19 +286,132 @@ export default function Coach() {
     fetchCoaches();
   }, []);
 
-  if (coaches.length === 0) return null;
+  // note: do not return early here — keep hooks order stable even before data loads
 
-  // ===== SWIPE HANDLERS =====
+  // ===== CAROUSEL LOGIC =====
+  useEffect(() => {
+    // detect touch devices
+    const touch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0 || window.matchMedia("(hover: none)").matches;
+    setIsTouchDevice(Boolean(touch));
+
+    const calc = () => {
+      const w = window.innerWidth;
+      const v = w >= 1024 ? 3 : w >= 640 ? 2 : 1;
+      setVisible(v);
+    };
+    // debounce resize
+    const onResize = () => {
+      clearTimeout(resizeTimeout.current);
+      resizeTimeout.current = setTimeout(calc, 150);
+    };
+    calc();
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearTimeout(resizeTimeout.current);
+    };
+  }, []);
+
+  const n = coaches.length;
+  const clones = visible;
+  const displayed = n > 0 ? [...coaches.slice(-clones), ...coaches, ...coaches.slice(0, clones)] : [];
+
+  useEffect(() => {
+    setIndex(clones);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, n]);
+
+  const getSlideWidth = () => {
+    if (!containerRef.current) return 0;
+    return containerRef.current.clientWidth / visible;
+  };
+
+  const translateX = () => `translateX(${-(index * getSlideWidth())}px)`;
+
+  useEffect(() => {
+    if (!isPlaying || isPaused || n === 0) return;
+    autoplayRef.current = setInterval(() => setIndex((i) => i + 1), 4500);
+    return () => clearInterval(autoplayRef.current);
+  }, [isPlaying, isPaused, n]);
+
+  const pauseAndResume = (timeout = 4000) => {
+    setIsPaused(true);
+    clearInterval(autoplayRef.current);
+    setTimeout(() => setIsPaused(false), timeout);
+  };
+
+  const handleTransitionEnd = () => {
+    const maxIndex = clones + n - 1;
+    if (index > maxIndex) {
+      setTransitionEnabled(false);
+      setIndex(clones);
+    } else if (index < clones) {
+      setTransitionEnabled(false);
+      setIndex(maxIndex);
+    }
+  };
+
+  useEffect(() => {
+    if (!transitionEnabled) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setTransitionEnabled(true));
+      });
+    }
+  }, [transitionEnabled]);
+
+  const prev = () => {
+    pauseAndResume();
+    setIndex((i) => i - 1);
+  };
+
+  const next = () => {
+    pauseAndResume();
+    setIndex((i) => i + 1);
+  };
+
+  const goTo = (realIdx) => {
+    pauseAndResume();
+    setIndex(clones + realIdx);
+  };
+
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
+    // pause during touch/drag
+    setIsPaused(true);
   };
 
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (diff > 50) setActiveIndex((i) => Math.min(i + 1, coaches.length - 1));
-    if (diff < -50) setActiveIndex((i) => Math.max(i - 1, 0));
+    if (diff > 50) setIndex((i) => i + 1);
+    if (diff < -50) setIndex((i) => i - 1);
     touchStartX.current = null;
+    // resume autoplay after short delay
+    setTimeout(() => setIsPaused(false), 1200);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying((p) => !p);
+  };
+
+  const handleKeyDownRoot = (e) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      prev();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      next();
+    } else if (e.key === " " || e.key === "Spacebar") {
+      // Space toggles play/pause
+      e.preventDefault();
+      togglePlay();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      goTo(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      goTo(n - 1);
+    }
   };
 
   return (
@@ -259,12 +423,50 @@ export default function Coach() {
           transition: transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1);
           transform-style: preserve-3d;
         }
-        .flip-card:hover .flip-card-inner { transform: rotateY(180deg); }
+        @media (hover: hover) {
+          .flip-card:hover .flip-card-inner { transform: rotateY(180deg); }
+        }
+        .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
         .flip-card-front, .flip-card-back {
           position: absolute; width: 100%; height: 100%;
           backface-visibility: hidden; -webkit-backface-visibility: hidden;
         }
         .flip-card-back { transform: rotateY(180deg); }
+
+        /* Carousel styles (scoped) */
+        .coach-carousel{ position:relative; width:100%; margin:20px 0; }
+        .cc-viewport{ overflow:hidden; width:100%; }
+        .cc-track{ display:flex; align-items:stretch; }
+        .cc-slide{ flex:0 0 auto; padding:12px; box-sizing:border-box; display:flex; flex-direction:column; }
+
+        /* Consistent card heights without hard cut: use min-height and flexible layout */
+        .cc-slide { min-height:480px; display:flex; flex-direction:column; }
+        .flip-card{ flex:1 1 auto; }
+        .pr-4{ flex:0 0 120px; }
+
+        /* Ensure images cover the area */
+        .flip-card-front .relative.z-10 img, .flip-card-back .relative img { width:100%; height:100%; object-fit:cover; }
+
+        .cc-btn{ position:absolute; top:50%; transform:translateY(-50%); border:none; background:rgba(10,25,47,0.9); color:white; min-width:44px; min-height:44px; width:44px; height:44px; border-radius:999px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10; }
+        .cc-btn.prev{ left:8px; }
+        .cc-btn.next{ right:8px; }
+        .cc-dots{ position:absolute; left:50%; transform:translateX(-50%); bottom:-18px; display:flex; gap:8px; }
+        .cc-dots .dot{ width:9px; height:9px; border-radius:50%; background:rgba(15,23,42,0.12); border:none; cursor:pointer; }
+        .cc-dots .dot.active{ background:#00E5FF; }
+
+        @media (max-width:1024px){
+          .cc-slide{ min-height:420px; }
+          .pr-4{ flex:0 0 110px; }
+        }
+
+        @media (max-width:640px){
+          .cc-btn{ min-width:44px; min-height:44px; }
+          .cc-slide{ min-height:360px; }
+          .pr-4{ flex:0 0 100px; }
+        }
+
+        /* Play/Pause button */
+        .cc-play{ position:absolute; top:12px; right:12px; background:#00E5FF; color:#0A192F; border-radius:8px; padding:6px 10px; font-weight:700; z-index:12; min-width:44px; min-height:44px; display:flex; align-items:center; gap:8px; }
       `}</style>
 
       <div className="max-w-7xl mx-auto">
@@ -292,56 +494,68 @@ export default function Coach() {
           </svg>
         </div>
 
-        {/* DESKTOP: grid 3 kolom */}
-        <div className="hidden md:grid md:grid-cols-3 gap-12 lg:gap-16">
-          {coaches.map((c) => (
-            <CoachCard key={c.id} c={c} />
-          ))}
-        </div>
-
-        {/* MOBILE: 1 card + swipe */}
-        <div className="md:hidden">
-          <div
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            className="select-none"
+        {/* Carousel (responsive) */}
+        <div
+          className="coach-carousel"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          ref={containerRef}
+          role="region"
+          aria-label="Carousel Pelatih"
+          tabIndex={0}
+          onKeyDown={handleKeyDownRoot}
+          onFocus={() => setIsPaused(true)}
+          onBlur={() => setIsPaused(false)}
+        >
+          <button
+            className="cc-play"
+            onClick={togglePlay}
+            aria-pressed={!isPlaying}
+            aria-label={isPlaying ? "Jeda autoplay" : "Putar autoplay"}
           >
-            <CoachCard c={coaches[activeIndex]} />
-          </div>
-
-          {/* Navigasi dots + tombol */}
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <button
-              onClick={() => setActiveIndex((i) => Math.max(i - 1, 0))}
-              disabled={activeIndex === 0}
-              className="w-9 h-9 rounded-full border border-[#00E5FF] text-[#00E5FF] flex items-center justify-center text-xl disabled:opacity-30 transition-opacity"
+            {isPlaying ? "Jeda" : "Putar"}
+          </button>
+          <div className="cc-viewport">
+            <div
+              className="cc-track"
+              aria-live="polite"
+              aria-atomic="true"
+              onTransitionEnd={handleTransitionEnd}
+              style={{
+                transform: translateX(),
+                transition: transitionEnabled ? "transform 0.5s ease-in-out" : "none",
+              }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
-              ‹
-            </button>
-
-            <div className="flex items-center gap-2">
-              {coaches.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveIndex(i)}
-                  className={`rounded-full transition-all duration-300 ${
-                    i === activeIndex
-                      ? "w-4 h-2 bg-[#00E5FF]"
-                      : "w-2 h-2 bg-[#00E5FF]/30"
-                  }`}
-                />
+              {displayed.map((c, i) => (
+                <div
+                  key={`slide-${c.id || i}`}
+                  className="cc-slide"
+                  style={{ width: `${100 / visible}%` }}
+                >
+                  <CoachCard c={c} isTouch={isTouchDevice} />
+                </div>
               ))}
             </div>
+          </div>
 
-            <button
-              onClick={() =>
-                setActiveIndex((i) => Math.min(i + 1, coaches.length - 1))
-              }
-              disabled={activeIndex === coaches.length - 1}
-              className="w-9 h-9 rounded-full border border-[#00E5FF] text-[#00E5FF] flex items-center justify-center text-xl disabled:opacity-30 transition-opacity"
-            >
-              ›
-            </button>
+          <button className="cc-btn prev" onClick={prev} aria-label="Slide sebelumnya">
+            ‹
+          </button>
+          <button className="cc-btn next" onClick={next} aria-label="Slide berikutnya">
+            ›
+          </button>
+
+          <div className="cc-dots">
+            {coaches.map((_, i) => (
+              <button
+                key={i}
+                className={`dot ${index - clones === i ? "active" : ""}`}
+                onClick={() => goTo(i)}
+                aria-label={`Ke slide ${i + 1}`}
+              />
+            ))}
           </div>
         </div>
       </div>
