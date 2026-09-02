@@ -20,14 +20,14 @@ export default function LayoutCoach() {
   };
 
   const menuItems = [
-    { name: "My QR Pass", path: "/coach", icon: <QrCode size={22} /> },
+    { name: "Kartu QR Saya", path: "/coach", icon: <QrCode size={22} /> },
     {
-      name: "My Schedule",
+      name: "Jadwal Saya",
       path: "/coach/schedule",
       icon: <CalendarDays size={22} />,
     },
     {
-      name: "Attendance Logs",
+      name: "Catatan Kehadiran",
       path: "/coach/logs",
       icon: <ClipboardList size={22} />,
     },

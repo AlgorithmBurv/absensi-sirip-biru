@@ -86,7 +86,7 @@ export default function Login() {
             Sirip<span className="text-blue-600">biru</span>
           </h1>
           <p className="text-slate-500 text-sm font-medium tracking-wide">
-            Athlete Attendance Portal
+            Portal Kehadiran Atlet
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export default function Login() {
           {/* Email Input */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-              Email Address
+              Alamat Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -116,7 +116,7 @@ export default function Login() {
           {/* Password Input */}
           <div className="space-y-1.5 pb-2">
             <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-              Password
+              Kata Sandi
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -151,11 +151,11 @@ export default function Login() {
             {loading ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                Signing In...
+                Sedang Masuk...
               </>
             ) : (
               <>
-                Sign In
+                Masuk
                 <ArrowRight
                   size={18}
                   className="group-hover:translate-x-1 transition-transform"
@@ -168,18 +168,18 @@ export default function Login() {
         {/* Footer info */}
         <div className="mt-8 text-center space-y-4">
           <p className="text-sm text-slate-600 font-medium">
-            Don't have an account?{" "}
+            Belum punya akun?{" "}
             <Link
               to="/register"
               className="text-blue-600 font-bold hover:underline transition-all"
             >
-              Register Here
+              Daftar Di Sini
             </Link>
           </p>
 
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs text-slate-400">
-              Having trouble accessing your account?
+              Kesulitan mengakses akun?
               <br />
               <a
                 href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20kesulitan%20login%20ke%20portal%20Siripbiru"
@@ -187,7 +187,7 @@ export default function Login() {
                 rel="noopener noreferrer"
                 className="text-blue-600 font-medium cursor-pointer hover:underline mt-1 inline-block"
               >
-                Contact Club Administrator
+                Hubungi Admin Klub
               </a>
             </p>
           </div>

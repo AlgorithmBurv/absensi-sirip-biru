@@ -145,7 +145,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center">
         <Loader2 size={40} className="text-blue-600 animate-spin mb-4" />
         <p className="text-slate-500 font-medium animate-pulse">
-          Analyzing dashboard metrics...
+          Menganalisis metrik dashboard...
         </p>
       </div>
     );
@@ -156,38 +156,38 @@ export default function Dashboard() {
       {/* Header Section */}
       <div className="max-w-7xl mx-auto mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Overview
+          Gambaran Umum
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Real-time statistics and club performance metrics.
+          Statistik real-time dan metrik kinerja klub.
         </p>
       </div>
 
       {/* Top Statistic Cards */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
-          title="Total Athletes"
+          title="Total Atlet"
           value={stats.students}
           icon={<Users size={24} />}
           colorClass="text-blue-600"
           bgClass="bg-blue-50"
         />
         <StatCard
-          title="Total Classes"
+          title="Total Kelas"
           value={stats.classes}
           icon={<Layers size={24} />}
           colorClass="text-indigo-600"
           bgClass="bg-indigo-50"
         />
         <StatCard
-          title="Active Sessions"
+          title="Sesi Aktif"
           value={stats.activeSessions}
           icon={<CalendarDays size={24} />}
           colorClass="text-emerald-600"
           bgClass="bg-emerald-50"
         />
         <StatCard
-          title="Total Scans"
+          title="Total Pemindaian"
           value={stats.totalLogs}
           icon={<Activity size={24} />}
           colorClass="text-amber-600"
@@ -202,10 +202,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                Attendance Trends
+                Tren Kehadiran
               </h2>
               <p className="text-xs font-medium text-slate-400 mt-0.5">
-                Last 7 recorded sessions
+                7 sesi terakhir yang tercatat
               </p>
             </div>
             <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">

@@ -99,7 +99,7 @@ export default function ScanQR() {
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
-      if (error) toast.error("Failed to load active sessions.");
+      if (error) toast.error("Gagal memuat sesi aktif.");
       else if (data) setActiveSessions(data);
     };
     fetchActiveSessions();

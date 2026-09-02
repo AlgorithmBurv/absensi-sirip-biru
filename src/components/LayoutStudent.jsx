@@ -13,19 +13,19 @@ export default function LayoutStudent() {
   };
 
   const menuItems = [
-    { name: "My QR Pass", path: "/student", icon: <QrCode size={22} /> },
+    { name: "Kartu QR Saya", path: "/student", icon: <QrCode size={22} /> },
     {
-      name: "Enroll Class",
+      name: "Daftar Kelas",
       path: "/student/enroll",
       icon: <CreditCard size={22} />,
     },
     {
-      name: "My Schedule",
+      name: "Jadwal Saya",
       path: "/student/schedule",
       icon: <CalendarDays size={22} />,
     },
     {
-      name: "Attendance History",
+      name: "Riwayat Kehadiran",
       path: "/student/history",
       icon: <History size={22} />,
     },
@@ -89,7 +89,7 @@ export default function LayoutStudent() {
                 : "opacity-0 lg:group-hover:opacity-100"
             }`}
           >
-            Athlete Portal
+            Portal Atlet
           </p>
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;

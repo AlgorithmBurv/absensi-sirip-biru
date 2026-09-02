@@ -127,7 +127,7 @@ export default function History() {
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
         <p className="text-slate-500 font-medium animate-pulse">
-          Loading your history...
+          Memuat riwayat Anda...
         </p>
       </div>
     );
@@ -140,10 +140,10 @@ export default function History() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
             <ClipboardList className="text-blue-600" size={32} />
-            Attendance History
+            Riwayat Kehadiran
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Track your swimming practice records and overview.
+            Lacak catatan latihan renang dan ringkasan Anda.
           </p>
         </div>
         <div className="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl text-sm font-bold border border-blue-100 shadow-sm w-fit">
@@ -160,7 +160,7 @@ export default function History() {
           </div>
           <input
             type="text"
-            placeholder="Search session or class name..."
+            placeholder="Cari nama sesi atau kelas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
@@ -177,12 +177,12 @@ export default function History() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm appearance-none cursor-pointer font-medium text-slate-600"
           >
-            <option value="all">All Status</option>
-            <option value="hadir_qr">Present (QR)</option>
-            <option value="hadir_manual">Present (Manual)</option>
-            <option value="izin">Excused</option>
-            <option value="sakit">Sick</option>
-            <option value="alpa">Absent</option>
+            <option value="all">Semua Status</option>
+            <option value="hadir_qr">Hadir (QR)</option>
+            <option value="hadir_manual">Hadir (Manual)</option>
+            <option value="izin">Izin</option>
+            <option value="sakit">Sakit</option>
+            <option value="alpa">Alpa</option>
           </select>
         </div>
 
@@ -209,9 +209,9 @@ export default function History() {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
-                <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">Session Details</th>
-                <th className="px-6 py-4">Class & Instructor</th>
+                <th className="px-6 py-4">Waktu</th>
+                <th className="px-6 py-4">Detail Sesi</th>
+                <th className="px-6 py-4">Kelas & Instruktur</th>
                 <th className="px-6 py-4 text-right">Status</th>
               </tr>
             </thead>
@@ -288,7 +288,7 @@ export default function History() {
                         <span className="font-medium">Coach:</span>{" "}
                         {assignedCoaches.length > 0
                           ? assignedCoaches.join(", ")
-                          : "To be assigned"}
+                          : "Belum ditentukan"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -313,10 +313,10 @@ export default function History() {
                       <Search size={32} className="text-slate-300" />
                     </div>
                     <p className="font-bold text-slate-600 text-lg">
-                      No records found
+                      Tidak ada catatan ditemukan
                     </p>
                     <p className="text-sm mt-1">
-                      Try adjusting your search or filter options.
+                      Coba sesuaikan pencarian atau opsi filter Anda.
                     </p>
                   </td>
                 </tr>

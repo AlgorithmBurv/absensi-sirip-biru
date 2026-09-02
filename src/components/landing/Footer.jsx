@@ -145,7 +145,7 @@ export default function Footer() {
 
           {/* Column 2: Quick Links */}
           <div>
-            <h4 className="text-white font-serif text-xl mb-6">Explore</h4>
+            <h4 className="text-white font-serif text-xl mb-6">Jelajahi</h4>
             <ul className="space-y-4">
               <li>
                 <a
@@ -157,7 +157,7 @@ export default function Footer() {
                     className="text-[#00E5FF] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"
                   />
                   <span className="-ml-6 group-hover:ml-0 transition-all">
-                    About Us
+                    Tentang Kami
                   </span>
                 </a>
               </li>
@@ -171,7 +171,7 @@ export default function Footer() {
                     className="text-[#00E5FF] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"
                   />
                   <span className="-ml-6 group-hover:ml-0 transition-all">
-                    Programs
+                    Program
                   </span>
                 </a>
               </li>
@@ -185,7 +185,7 @@ export default function Footer() {
                     className="text-[#00E5FF] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"
                   />
                   <span className="-ml-6 group-hover:ml-0 transition-all">
-                    Coaches
+                    Pelatih
                   </span>
                 </a>
               </li>
@@ -199,7 +199,7 @@ export default function Footer() {
                     className="text-[#00E5FF] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"
                   />
                   <span className="-ml-6 group-hover:ml-0 transition-all">
-                    Reviews
+                    Ulasan
                   </span>
                 </a>
               </li>
@@ -208,7 +208,7 @@ export default function Footer() {
 
           {/* Column 3 & 4: Contact Info */}
           <div className="lg:col-span-2">
-            <h4 className="text-white font-serif text-xl mb-6">Get in Touch</h4>
+            <h4 className="text-white font-serif text-xl mb-6">Hubungi Kami</h4>
             <div className="grid sm:grid-cols-2 gap-8">
               {/* Address */}
               <div className="flex gap-4">
@@ -217,7 +217,7 @@ export default function Footer() {
                 </div>
                 <div>
                   <p className="text-white/80 text-sm font-bold mb-2 tracking-wide">
-                    HEADQUARTERS
+                    KANTOR PUSAT
                   </p>
                   <p className="text-white/50 text-sm leading-relaxed whitespace-pre-wrap">
                     {contactInfo.address}
@@ -233,7 +233,7 @@ export default function Footer() {
                   </div>
                   <div>
                     <p className="text-white/80 text-sm font-bold mb-1 tracking-wide">
-                      PHONE
+                      TELEPON
                     </p>
                     <p className="text-white/50 text-sm">{contactInfo.phone}</p>
                   </div>

@@ -26,8 +26,8 @@ function ConfirmModal({
   onCancel,
   title,
   description,
-  confirmLabel = "Delete",
-  cancelLabel = "Cancel",
+  confirmLabel = "Hapus",
+  cancelLabel = "Batal",
 }) {
   if (!isOpen) return null;
 
@@ -404,20 +404,20 @@ export default function SessionManage() {
 
   const handleDelete = (id) => {
     openConfirm({
-      title: "Delete This Session?",
+      title: "Hapus Sesi Ini?",
       description:
-        "This action is permanent. All attendance logs related to this session will also be deleted.",
+        "Tindakan ini bersifat permanen. Semua catatan kehadiran yang terkait dengan sesi ini juga akan dihapus.",
       onConfirm: async () => {
         closeConfirm();
         const loadingToast = toast.loading("Deleting session...");
         const { error } = await supabase.from("sessions").delete().eq("id", id);
         if (!error) {
-          toast.success("Session deleted successfully", { id: loadingToast });
+          toast.success("Sesi berhasil dihapus", { id: loadingToast });
           if (paginatedSessions.length === 1 && currentPage > 1)
             setCurrentPage((p) => p - 1);
           fetchSessions();
         } else
-          toast.error(`Failed to delete: ${error.message}`, {
+          toast.error(`Gagal menghapus: ${error.message}`, {
             id: loadingToast,
           });
       },
@@ -434,7 +434,7 @@ export default function SessionManage() {
       .eq("id", id);
 
     if (!error) {
-      toast.success(currentStatus ? "Session closed" : "Session activated", {
+      toast.success(currentStatus ? "Sesi ditutup" : "Sesi diaktifkan", {
         id: loadingToast,
       });
       fetchSessions();
@@ -463,17 +463,17 @@ export default function SessionManage() {
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Training Sessions
+            Sesi Latihan
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Manage daily swimming practice schedules and attendance gates.
+            Kelola jadwal latihan renang harian dan gerbang kehadiran.
           </p>
         </div>
         <button
           onClick={openAddModal}
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
-          <Plus size={18} /> New Session
+          <Plus size={18} /> Sesi Baru
         </button>
       </div>
 
@@ -501,9 +501,9 @@ export default function SessionManage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-600"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active Sessions</option>
-              <option value="closed">Closed Sessions</option>
+              <option value="all">Semua Status</option>
+              <option value="active">Sesi Aktif</option>
+              <option value="closed">Sesi Ditutup</option>
             </select>
           </div>
           <button
@@ -516,14 +516,14 @@ export default function SessionManage() {
                 sortOrder === "desc" ? "text-blue-600" : "text-slate-400"
               }
             />
-            {sortOrder === "desc" ? "Newest" : "Oldest"}
+            {sortOrder === "desc" ? "Terbaru" : "Tertua"}
           </button>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
             <CalendarDays size={14} />
-            <span>Date</span>
+            <span>Tanggal</span>
           </div>
           <input
             type="date"
@@ -545,7 +545,7 @@ export default function SessionManage() {
               onClick={clearFilters}
               className="flex items-center justify-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-500 font-bold py-3 px-4 rounded-2xl transition-all text-sm flex-shrink-0"
             >
-              <X size={15} /> Clear
+              <X size={15} /> Bersihkan
             </button>
           )}
         </div>
@@ -554,17 +554,17 @@ export default function SessionManage() {
       {/* Table */}
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col min-h-[500px]">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
-          <h2 className="font-bold text-slate-800">Session Logs</h2>
+          <h2 className="font-bold text-slate-800">Catatan Sesi</h2>
           <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
-            {filteredSessions.length} / {sessions.length} Results
+            {filteredSessions.length} / {sessions.length} Hasil
           </span>
         </div>
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
-                <th className="px-6 py-4">Session Details</th>
-                <th className="px-6 py-4">Status Gate</th>
+                <th className="px-6 py-4">Detail Sesi</th>
+                <th className="px-6 py-4">Status Gerbang</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -624,7 +624,7 @@ export default function SessionManage() {
                         }`}
                       >
                         <Power size={12} />
-                        {s.is_active ? "GATE OPEN" : "CLOSED"}
+                        {s.is_active ? "GERBANG TERBUKA" : "DITUTUP"}
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -666,12 +666,12 @@ export default function SessionManage() {
                       <Search size={32} className="text-slate-300" />
                     </div>
                     <p className="font-bold text-slate-600">
-                      No sessions found
+                      Tidak ada sesi yang ditemukan
                     </p>
                     <p className="text-sm mt-1">
                       {hasActiveFilters
-                        ? "Try adjusting your search, filter, or date range."
-                        : "Start by creating a new session."}
+                        ? "Coba sesuaikan pencarian, filter, atau rentang tanggal Anda."
+                        : "Mulai dengan membuat sesi baru."}
                     </p>
                   </td>
                 </tr>
@@ -717,7 +717,7 @@ export default function SessionManage() {
               <div className="flex items-center gap-3 text-indigo-600">
                 <Eye size={24} />
                 <h3 className="text-xl font-bold tracking-tight text-slate-800">
-                  Attendance Info: {selectedSessionDetail?.name}
+                  Info Kehadiran: {selectedSessionDetail?.name}
                 </h3>
               </div>
               <button
@@ -881,7 +881,7 @@ export default function SessionManage() {
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit2 size={24} /> : <CalendarDays size={24} />}
                 <h3 className="text-xl font-bold tracking-tight text-slate-800">
-                  {isEditing ? "Edit Session" : "New Session"}
+                  {isEditing ? "Edit Sesi" : "Sesi Baru"}
                 </h3>
               </div>
               <button
@@ -900,7 +900,7 @@ export default function SessionManage() {
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Session Name
+                      Nama Sesi
                     </label>
                     <input
                       required
@@ -996,13 +996,13 @@ export default function SessionManage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  {isEditing ? "Save Changes" : "Open Session"}
+                  {isEditing ? "Simpan Perubahan" : "Buka Sesi"}
                 </button>
               </div>
             </form>

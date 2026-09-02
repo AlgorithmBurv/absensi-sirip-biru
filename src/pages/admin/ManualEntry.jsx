@@ -65,7 +65,7 @@ export default function ManualEntry() {
         if (std) setStudents(std);
         if (cch) setCoaches(cch);
       } catch (error) {
-        toast.error("Failed to load data: " + error.message);
+        toast.error("Gagal memuat data: " + error.message);
       } finally {
         setLoading(false);
       }
@@ -143,11 +143,11 @@ export default function ManualEntry() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.session_id) {
-      toast.error("Please select an active session.");
+      toast.error("Silakan pilih sesi aktif.");
       return;
     }
     if (selectedAttendees.length === 0) {
-      toast.error("Please select at least one attendee.");
+      toast.error("Silakan pilih setidaknya satu peserta.");
       return;
     }
 

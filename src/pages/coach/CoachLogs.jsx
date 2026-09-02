@@ -57,7 +57,7 @@ export default function CoachLogs() {
         if (error) throw error;
         setLogs(data || []);
       } catch (err) {
-        toast.error("Failed to load logs: " + err.message);
+        toast.error("Gagal memuat catatan: " + err.message);
       } finally {
         setLoading(false);
       }
@@ -135,7 +135,7 @@ export default function CoachLogs() {
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
         <p className="text-slate-500 font-medium animate-pulse">
-          Loading attendance logs...
+          Memuat catatan kehadiran...
         </p>
       </div>
     );
@@ -364,7 +364,7 @@ export default function CoachLogs() {
                     </div>
                     <p className="font-bold text-slate-600">No records found</p>
                     <p className="text-sm mt-1">
-                      Try adjusting your search or filter options.
+                      Coba sesuaikan pencarian atau opsi filter Anda.
                     </p>
                   </td>
                 </tr>

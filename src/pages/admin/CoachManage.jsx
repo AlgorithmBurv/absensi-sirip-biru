@@ -122,7 +122,7 @@ export default function CoachManage() {
     e.preventDefault();
     setSubmitting(true);
     const loadingToast = toast.loading(
-      isEditing ? "Updating data..." : "Registering coach...",
+      isEditing ? "Memperbarui data..." : "Mendaftarkan pelatih...",
     );
     const cleanAchievements = form.achievements.filter((a) => a.trim() !== "");
 
@@ -149,7 +149,7 @@ export default function CoachManage() {
 
         finalPhotoUrl = urlData.publicUrl;
       } catch (err) {
-        toast.error("Failed to upload image: " + err.message, {
+        toast.error("Gagal mengunggah gambar: " + err.message, {
           id: loadingToast,
         });
         setSubmitting(false);
@@ -185,7 +185,7 @@ export default function CoachManage() {
           .eq("id", currentId);
 
         if (coachError) throw coachError;
-        toast.success("Coach data updated!", { id: loadingToast });
+        toast.success("Data pelatih berhasil diperbarui!", { id: loadingToast });
       } else {
         const { data: newUser, error: userError } = await supabase
           .from("users")
@@ -202,7 +202,7 @@ export default function CoachManage() {
 
         if (userError)
           throw new Error(
-            "Failed to create User. Email might already be registered.",
+            "Gagal membuat User. Email mungkin sudah terdaftar.",
           );
 
         const { error: coachError } = await supabase.from("coaches").insert([
@@ -226,7 +226,7 @@ export default function CoachManage() {
           await supabase.from("users").delete().eq("id", newUser.id);
           throw coachError;
         }
-        toast.success("Coach registered successfully!", { id: loadingToast });
+        toast.success("Pelatih berhasil terdaftar!", { id: loadingToast });
       }
       setIsModalOpen(false);
       fetchData();
@@ -240,18 +240,18 @@ export default function CoachManage() {
   const handleDelete = async (c) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete ${c.users?.full_name}? All related data will be permanently lost.`,
+        `Apakah Anda yakin ingin menghapus ${c.users?.full_name}? Semua data terkait akan hilang secara permanen.`,
       )
     )
       return;
-    const loadingToast = toast.loading("Deleting data...");
+    const loadingToast = toast.loading("Menghapus data...");
 
     const { error } = await supabase.from("users").delete().eq("id", c.user_id);
     if (!error) {
-      toast.success("Coach deleted successfully", { id: loadingToast });
+      toast.success("Pelatih berhasil dihapus", { id: loadingToast });
       fetchData();
     } else {
-      toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
+      toast.error(`Gagal menghapus: ${error.message}`, { id: loadingToast });
     }
   };
 
@@ -266,7 +266,7 @@ export default function CoachManage() {
           c.id === id ? { ...c, show_on_landing: !currentStatus } : c,
         ),
       );
-      toast.success("Publication status updated");
+      toast.success("Status publikasi berhasil diperbarui");
     }
   };
 
@@ -285,10 +285,10 @@ export default function CoachManage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              Coach Registry
+              Registri Pelatih
             </h1>
             <p className="text-slate-500 text-sm">
-              Manage instructor data and their public profiles.
+              Kelola data instruktur dan profil publik mereka.
             </p>
           </div>
         </div>
@@ -296,7 +296,7 @@ export default function CoachManage() {
           onClick={openAddModal}
           className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-bold py-3 px-6 rounded-2xl shadow-lg transition-all active:scale-95"
         >
-          <Plus size={18} /> Register Coach
+          <Plus size={18} /> Daftarkan Pelatih
         </button>
       </div>
 
@@ -447,7 +447,7 @@ export default function CoachManage() {
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit3 size={24} /> : <UserPlus size={24} />}
                 <h3 className="text-xl font-bold tracking-tight text-slate-800">
-                  {isEditing ? "Edit Coach Data" : "New Coach Registration"}
+                  {isEditing ? "Edit Data Pelatih" : "Pendaftaran Pelatih Baru"}
                 </h3>
               </div>
               <button
@@ -502,7 +502,7 @@ export default function CoachManage() {
                         Password{" "}
                         {isEditing && (
                           <span className="text-slate-400 normal-case ml-1 font-normal">
-                            (Leave blank if unchanged)
+            
                           </span>
                         )}
                       </label>
@@ -547,7 +547,7 @@ export default function CoachManage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                     <div>
                       <label className={labelCls}>
-                        Nickname (Display Name)
+                        Nickname
                       </label>
                       <input
                         required
@@ -786,7 +786,7 @@ export default function CoachManage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
@@ -796,8 +796,8 @@ export default function CoachManage() {
                   {submitting
                     ? "Processing..."
                     : isEditing
-                      ? "Save Changes"
-                      : "Register Coach"}
+                      ? "Simpan Perubahan"
+                      : "Daftarkan Pelatih"}
                 </button>
               </div>
             </form>

@@ -14,10 +14,10 @@ import {
 const ICON_MAP = { Droplets, Activity, Medal, Star };
 
 const ICON_OPTIONS = [
-  { value: "Droplets", label: "Droplets — Beginner" },
-  { value: "Activity", label: "Activity — Intermediate" },
-  { value: "Medal",    label: "Medal — Elite" },
-  { value: "Star",     label: "Star — General" },
+  { value: "Droplets", label: "Droplets — Pemula" },
+  { value: "Activity", label: "Activity — Menengah" },
+  { value: "Medal",    label: "Medal — Elit" },
+  { value: "Star",     label: "Star — Umum" },
 ];
 
 // ─────────────────────────────────────────────
@@ -190,7 +190,7 @@ export default function LandingManage() {
       if (testiData) setTestimonials(testiData);
       if (galleryData) setGallery(galleryData);
     } catch (err) {
-      toast.error("Failed to load data");
+      toast.error("Gagal memuat data");
     }
     setLoading(false);
   };
@@ -476,7 +476,7 @@ export default function LandingManage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold leading-none truncate">
-              Landing Page Manager
+              Manajer Halaman Arahan
             </h1>
             <p className="text-[11px] text-slate-400 mt-0.5 truncate">
               Siripbiru Athletics
@@ -892,8 +892,8 @@ export default function LandingManage() {
                           onClick={() => toggleTesti(t.id, t.is_published)}
                           title={
                             t.is_published
-                              ? "Click to unpublish"
-                              : "Click to publish"
+                              ? "Klik untuk tidak dipublikasikan"
+                              : "Klik untuk dipublikasikan"
                           }
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all ${
                             t.is_published
@@ -967,7 +967,7 @@ export default function LandingManage() {
                   setCourseForm({ ...courseForm, price: e.target.value })
                 }
                 className={inputCls}
-                placeholder="e.g. Rp 350.000/month"
+                placeholder="mis. Rp 350.000/bulan"
               />
             </Field>
             <Field label="Icon">
@@ -986,7 +986,7 @@ export default function LandingManage() {
               </select>
             </Field>
             <div className="md:col-span-2">
-              <Field label="Short Description">
+              <Field label="Deskripsi Singkat">
                 <textarea
                   required
                   rows={2}

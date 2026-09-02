@@ -68,7 +68,7 @@ export default function AboutUs() {
             {/* Bagian Teks (Kanan) */}
             <div className="order-1 lg:order-2">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
-                Swimming Glory
+                Kegemilangan Renang
               </p>
 
               <h3 className="text-4xl md:text-5xl font-light text-slate-900 mb-4">

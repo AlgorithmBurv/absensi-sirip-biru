@@ -67,7 +67,7 @@ export default function Course() {
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-[10px] font-bold text-[#00E5FF] uppercase tracking-[0.2em] mb-4 flex items-center justify-center gap-2">
-              Siripbiru Programs <span className="text-white/30">^</span>
+              Program Siripbiru <span className="text-white/30">^</span>
             </h2>
             <svg
               width="60"

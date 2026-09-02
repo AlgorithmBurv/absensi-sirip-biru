@@ -47,7 +47,7 @@ export default function Payments() {
       if (error) throw error;
       setPayments(data || []);
     } catch (error) {
-      toast.error("Failed to load payments: " + error.message);
+      toast.error("Gagal memuat pembayaran: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export default function Payments() {
   // ==========================================
   const handleApprove = async () => {
     setActionLoading(true);
-    const loadingToast = toast.loading("Verifying capacity and approving...");
+    const loadingToast = toast.loading("Memverifikasi kapasitas dan menyetujui...");
 
     try {
       // 1. Cek Kuota Kelas Aktual (Mencegah Race Condition)
@@ -191,7 +191,7 @@ export default function Payments() {
 
   const getStatusBadge = (status) => {
     if (status === "approved") return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-200">Approved</span>;
-    if (status === "rejected") return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-200">Rejected</span>;
+    if (status === "rejected") return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-200">Ditolak</span>;
     return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-200">Pending</span>;
   };
 

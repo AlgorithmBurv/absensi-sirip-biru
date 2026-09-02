@@ -134,7 +134,7 @@ export default function CoachSchedule() {
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
         <p className="text-slate-500 font-medium animate-pulse">
-          Loading coach schedule...
+          Memuat jadwal pelatih...
         </p>
       </div>
     );
@@ -151,10 +151,10 @@ export default function CoachSchedule() {
       <div className="max-w-7xl mx-auto mb-8">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
           <CalendarDays className="text-blue-600" size={32} />
-          My Schedule
+          Jadwal Saya
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Training sessions specifically assigned to you as an instructor.
+          Sesi latihan yang khusus ditugaskan kepada Anda sebagai instruktur.
         </p>
       </div>
 
@@ -163,22 +163,22 @@ export default function CoachSchedule() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           {
-            label: "Total Assignments",
+            label: "Total Penugasan",
             value: sessions.length,
             color: "text-blue-600",
           },
           {
-            label: "Active Gates",
+            label: "Gerbang Aktif",
             value: sessions.filter((s) => s.is_active).length,
             color: "text-emerald-600",
           },
           {
-            label: "Today's Schedule",
+            label: "Jadwal Hari Ini",
             value: grouped.today.length,
             color: "text-amber-600",
           },
           {
-            label: "Upcoming",
+            label: "Mendatang",
             value: grouped.upcoming.length,
             color: "text-indigo-600",
           },
@@ -274,7 +274,7 @@ export default function CoachSchedule() {
               {activeTab === "upcoming" && "No upcoming sessions found."}
               {activeTab === "past" && "No past session history found."}
             </p>
-            <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+            <p className="text-sm mt-1">Coba sesuaikan pencarian atau filter Anda.</p>
           </div>
         ) : (
           <>

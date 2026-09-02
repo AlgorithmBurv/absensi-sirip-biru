@@ -54,7 +54,7 @@ export default function Testimonials() {
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-20">
           <h2 className="text-[10px] font-bold text-[#00E5FF] uppercase tracking-[0.2em] mb-4">
-            Success Stories
+            Cerita Sukses
           </h2>
           <h3 className="text-4xl md:text-5xl font-serif text-white mb-6">
             Cerita <span className="font-light opacity-80">Mereka.</span>

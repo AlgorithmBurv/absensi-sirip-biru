@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle
 } from "lucide-react";
 
-function ConfirmModal({ isOpen, onConfirm, onCancel, title, description, confirmLabel = "Delete", cancelLabel = "Cancel" }) {
+function ConfirmModal({ isOpen, onConfirm, onCancel, title, description, confirmLabel = "Hapus", cancelLabel = "Batal" }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -123,7 +123,7 @@ export default function StudentManage() {
   // ACTION: APPROVE / REJECT USER
   // ==========================================
   const handleApprovalAction = async (userId, newStatus, studentName) => {
-    const actionLabel = newStatus === 'active' ? 'Approve' : 'Reject';
+    const actionLabel = newStatus === 'active' ? 'Setujui' : 'Tolak';
     const actionColor = newStatus === 'active' ? 'emerald' : 'red';
     
     openConfirm({
@@ -186,7 +186,7 @@ export default function StudentManage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const loadingToast = toast.loading(isEditing ? "Updating record..." : "Creating account & athlete profile...");
+const loadingToast = toast.loading(isEditing ? "Memperbarui catatan..." : "Membuat akun & profil atlet...");
 
     try {
       if (isEditing) {
@@ -232,13 +232,13 @@ export default function StudentManage() {
           await supabase.from("student_enrollments").insert(insertPayload);
         }
 
-        toast.success("Information updated successfully", { id: loadingToast });
+        toast.success("Informasi berhasil diperbarui", { id: loadingToast });
       } else {
         // 1. Insert User (Langsung aktif karena dibuat oleh admin)
         const { data: newUser, error: userError } = await supabase.from("users").insert([{ 
           email: form.email, password: form.password, full_name: form.full_name, role: "student", status: "active"
         }]).select().single();
-        if (userError) throw new Error("Failed to create User. Email might already be registered. (" + userError.message + ")");
+        if (userError) throw new Error("Gagal membuat User. Email mungkin sudah terdaftar. (" + userError.message + ")");
 
         // 2. Insert Student
         const { data: newStudent, error: studentError } = await supabase.from("students").insert([{ 
@@ -262,7 +262,7 @@ export default function StudentManage() {
           await supabase.from("student_enrollments").insert(enrollments);
         }
 
-        toast.success("Account & Athlete registered successfully", { id: loadingToast });
+        toast.success("Akun & Atlet berhasil terdaftar", { id: loadingToast });
       }
       setIsModalOpen(false);
       fetchData();
@@ -273,14 +273,14 @@ export default function StudentManage() {
 
   const handleDelete = (id) => {
     openConfirm({
-      title: "Delete This Athlete?",
-      description: "This action is permanent and cannot be undone. All athlete profile data and enrollments will be removed.",
+      title: "Hapus Atlet Ini?",
+      description: "Tindakan ini bersifat permanen dan tidak dapat dibatalkan. Semua data profil atlet dan pendaftaran akan dihapus.",
       onConfirm: async () => {
         closeConfirm();
-        const loadingToast = toast.loading("Deleting record...");
+        const loadingToast = toast.loading("Menghapus catatan...");
         const { error } = await supabase.from("students").delete().eq("id", id);
-        if (!error) { toast.success("Record deleted successfully", { id: loadingToast }); fetchData(); }
-        else toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
+        if (!error) { toast.success("Catatan berhasil dihapus", { id: loadingToast }); fetchData(); }
+        else toast.error(`Gagal menghapus: ${error.message}`, { id: loadingToast });
       },
     });
   };
@@ -311,17 +311,17 @@ export default function StudentManage() {
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Athlete Registry
+            Registri Atlet
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Manage student profiles, parent contact, and multi-class enrollments.
+            Kelola profil siswa, kontak orang tua, dan pendaftaran multi-kelas.
           </p>
         </div>
         <button
           onClick={openAddModal}
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
-          <UserPlus size={18} /> New Registration
+          <UserPlus size={18} /> Pendaftaran Baru
         </button>
       </div>
 
@@ -333,7 +333,7 @@ export default function StudentManage() {
             ${activeTab === 'active' ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}
           `}
         >
-          <CheckCircle2 size={16} /> Active Athletes
+          <CheckCircle2 size={16} /> Atlet Aktif
           <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ${activeTab === 'active' ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
             {counts.active}
           </span>
@@ -344,7 +344,7 @@ export default function StudentManage() {
             ${activeTab === 'pending' ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}
           `}
         >
-          <AlertTriangle size={16} /> Pending Approval
+          <AlertTriangle size={16} /> Menunggu Persetujuan
           {counts.pending > 0 && (
             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ${activeTab === 'pending' ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600"}`}>
               {counts.pending}
@@ -357,7 +357,7 @@ export default function StudentManage() {
             ${activeTab === 'rejected' ? "bg-red-500 text-white shadow-lg shadow-red-500/30" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}
           `}
         >
-          <XCircle size={16} /> Rejected
+          <XCircle size={16} /> Ditolak
           <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ${activeTab === 'rejected' ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
             {counts.rejected}
           </span>
@@ -372,7 +372,7 @@ export default function StudentManage() {
           </div>
           <input
             type="text"
-            placeholder="Search by name, NIS, or parent..."
+            placeholder="Cari berdasarkan nama, NIS, atau orang tua..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
@@ -387,7 +387,7 @@ export default function StudentManage() {
             onChange={(e) => setFilterClass(e.target.value)}
             className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-600"
           >
-            <option value="all">All Classes</option>
+            <option value="all">Semua Kelas</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -403,14 +403,14 @@ export default function StudentManage() {
             size={15}
             className={sortOrder === "asc" ? "text-blue-600" : "text-slate-400"}
           />
-          Name: {sortOrder === "asc" ? "A - Z" : "Z - A"}
+          Nama: {sortOrder === "asc" ? "A - Z" : "Z - A"}
         </button>
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
             className="flex items-center justify-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-500 font-bold py-3 px-4 rounded-2xl transition-all text-sm flex-shrink-0"
           >
-            <X size={15} /> Clear
+            <X size={15} /> Bersihkan
           </button>
         )}
       </div>
@@ -419,10 +419,10 @@ export default function StudentManage() {
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
           <h2 className="font-bold text-slate-800">
-            {activeTab === 'pending' ? "Needs Approval" : activeTab === 'rejected' ? "Rejected Registrations" : "Data Inventory"}
+            {activeTab === 'pending' ? "Membutuhkan Persetujuan" : activeTab === 'rejected' ? "Pendaftaran Ditolak" : "Inventaris Data"}
           </h2>
           <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
-            {processedStudents.length} {activeTab} Records
+            {processedStudents.length} {activeTab} Catatan
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -544,7 +544,7 @@ export default function StudentManage() {
                     </p>
                     <p className="text-sm mt-1">
                       {hasActiveFilters
-                        ? "Try adjusting your search or filter."
+                        ? "Coba sesuaikan pencarian atau filter Anda."
                         : activeTab === 'pending' ? "Antrean persetujuan kosong." : "Data kosong."}
                     </p>
                   </td>
@@ -563,7 +563,7 @@ export default function StudentManage() {
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit2 size={24} /> : <UserPlus size={24} />}
                 <h3 className="text-xl font-bold tracking-tight text-slate-800">
-                  {isEditing ? "Edit Athlete Data" : "New Registration"}
+                  {isEditing ? "Edit Data Atlet" : "Pendaftaran Baru"}
                 </h3>
               </div>
               <button
@@ -704,10 +704,10 @@ export default function StudentManage() {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Parent / Guardian Name
+                      Nama Orang Tua / Wali
                     </label>
                     <input
-                      placeholder="Guardian full name"
+                      placeholder="Nama lengkap wali"
                       value={form.parent_name}
                       onChange={(e) =>
                         setForm({ ...form, parent_name: e.target.value })
@@ -718,11 +718,11 @@ export default function StudentManage() {
                   
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Age (Years)
+                      Usia (Tahun)
                     </label>
                     <input
                       type="number"
-                      placeholder="e.g. 15"
+                      placeholder="mis. 15"
                       value={form.age}
                       onChange={(e) =>
                         setForm({ ...form, age: e.target.value })
@@ -732,7 +732,7 @@ export default function StudentManage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Contact Number
+                      Nomor Kontak
                     </label>
                     <input
                       placeholder="+62 812..."
@@ -746,7 +746,7 @@ export default function StudentManage() {
 
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                      Complete Home Address
+                      Alamat Rumah Lengkap
                     </label>
                     <input
                       placeholder="Street name, building, city..."
@@ -767,13 +767,13 @@ export default function StudentManage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  {isEditing ? "Save Changes" : "Confirm Registration"}
+                  {isEditing ? "Simpan Perubahan" : "Konfirmasi Pendaftaran"}
                 </button>
               </div>
             </form>

@@ -45,7 +45,7 @@ function ConfirmModal({
             onClick={onClose}
             className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all"
           >
-            Cancel
+            Batal
           </button>
           <button
             onClick={onConfirm}
@@ -167,10 +167,10 @@ export default function ClassManage() {
       .eq("id", confirmModal.id);
 
     if (!error) {
-      toast.success("Class deleted successfully", { id: loadingToast });
+      toast.success("Kelas berhasil dihapus", { id: loadingToast });
       fetchClasses();
     } else
-      toast.error(`Failed to delete: ${error.message}`, { id: loadingToast });
+      toast.error(`Gagal menghapus: ${error.message}`, { id: loadingToast });
   };
 
   // Helper Formatting Rupiah
@@ -193,27 +193,27 @@ export default function ClassManage() {
         isOpen={confirmModal.open}
         onClose={() => setConfirmModal({ open: false, id: null, name: "" })}
         onConfirm={handleDelete}
-        title="Delete This Class?"
+        title="Hapus Kelas Ini?"
         message={
           <>
-            Are you sure you want to permanently delete{" "}
+            Apakah Anda yakin ingin menghapus secara permanen{" "}
             <span className="font-bold text-slate-700">
-              "{confirmModal.name}"
+              \"{confirmModal.name}\"
             </span>
-            ? This action cannot be undone.
+            ? Tindakan ini tidak dapat dibatalkan.
           </>
         }
-        confirmLabel="Yes, Delete"
+        confirmLabel="Ya, Hapus"
       />
 
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Class Levels
+            Tingkat Kelas
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Manage training groups, capacities, and pricing.
+            Kelola kelompok latihan, kapasitas, dan harga.
           </p>
         </div>
         <button
@@ -221,25 +221,25 @@ export default function ClassManage() {
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
           <Plus size={18} />
-          New Class
+          Kelas Baru
         </button>
       </div>
 
       {/* Table */}
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
-          <h2 className="font-bold text-slate-800">Class Inventory</h2>
+          <h2 className="font-bold text-slate-800">Inventaris Kelas</h2>
           <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
-            {classes.length} Classes
+            {classes.length} Kelas
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-[11px] uppercase tracking-widest font-black">
-                <th className="px-8 py-4">Class Details</th>
-                <th className="px-6 py-4">Pricing</th>
-                <th className="px-6 py-4">Capacity limit</th>
+                <th className="px-8 py-4">Detail Kelas</th>
+                <th className="px-6 py-4">Harga</th>
+                <th className="px-6 py-4">Batas Kapasitas</th>
                 <th className="px-8 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -324,7 +324,7 @@ export default function ClassManage() {
               <div className="flex items-center gap-3 text-blue-600">
                 {isEditing ? <Edit2 size={24} /> : <Plus size={24} />}
                 <h3 className="text-xl font-bold tracking-tight text-slate-800">
-                  {isEditing ? "Edit Class" : "New Class"}
+                  {isEditing ? "Edit Kelas" : "Kelas Baru"}
                 </h3>
               </div>
               <button
@@ -409,13 +409,13 @@ export default function ClassManage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 flex items-center gap-2"
                 >
-                  {isEditing ? "Save Changes" : "Create Class"}
+                  {isEditing ? "Simpan Perubahan" : "Buat Kelas"}
                 </button>
               </div>
             </form>

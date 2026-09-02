@@ -24,7 +24,7 @@ export default function Profile() {
   const fetchProfile = useCallback(async () => {
     try {
       const savedUser = localStorage.getItem("user_session");
-      if (!savedUser) throw new Error("Session expired. Please login again.");
+      if (!savedUser) throw new Error("Sesi berakhir. Silakan login kembali.");
 
       const user = JSON.parse(savedUser);
 
@@ -42,7 +42,7 @@ export default function Profile() {
       if (error) throw error;
       setStudentData(data);
     } catch (err) {
-      toast.error("Failed to load profile data. Please contact admin.");
+      toast.error("Gagal memuat data profil. Silakan hubungi admin.");
     } finally {
       setLoading(false);
     }
@@ -57,11 +57,11 @@ export default function Profile() {
 
   // Handle Download QR
   const handleDownloadQR = () => {
-    const loadingToast = toast.loading("Preparing your Digital Pass...");
+    const loadingToast = toast.loading("Menyiapkan Kartu Digital Anda...");
     const svgElement = qrRef.current?.querySelector("svg");
     
     if (!svgElement) {
-      toast.error("QR Code not ready yet.", { id: loadingToast });
+      toast.error("Kode QR belum siap.", { id: loadingToast });
       return;
     }
 
@@ -86,12 +86,12 @@ export default function Profile() {
         link.href = pngUrl;
         link.click();
         
-        toast.success("Digital Pass downloaded successfully!", { id: loadingToast });
+        toast.success("Kartu Digital berhasil diunduh!", { id: loadingToast });
       };
       
       img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
     } catch (error) {
-      toast.error("Failed to download image.", { id: loadingToast });
+      toast.error("Gagal mengunduh gambar.", { id: loadingToast });
     }
   };
 
@@ -114,7 +114,7 @@ export default function Profile() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const loadingToast = toast.loading("Saving changes...");
+    const loadingToast = toast.loading("Menyimpan perubahan...");
 
     try {
       const user = JSON.parse(localStorage.getItem("user_session"));
@@ -148,7 +148,7 @@ export default function Profile() {
 
       if (studentError) throw studentError;
 
-      toast.success("Profile updated successfully!", { id: loadingToast });
+      toast.success("Profil berhasil diperbarui!", { id: loadingToast });
       setIsEditModalOpen(false);
       
       // Update UI dengan mengambil data terbaru
@@ -170,7 +170,7 @@ export default function Profile() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Loading Digital Pass...</p>
+        <p className="text-slate-500 font-medium animate-pulse">Memuat Kartu Digital...</p>
       </div>
     );
   }
@@ -181,8 +181,8 @@ export default function Profile() {
         <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
           <Contact size={32} />
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Profile Not Found</h2>
-        <p className="text-slate-500 text-sm max-w-xs">Your account has not been linked to an athlete profile. Please contact the administrator.</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Profil Tidak Ditemukan</h2>
+        <p className="text-slate-500 text-sm max-w-xs">Akun Anda belum terhubung dengan profil atlet. Silakan hubungi administrator.</p>
       </div>
     );
   }
@@ -192,8 +192,8 @@ export default function Profile() {
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '16px', fontWeight: '500' } }} />
 
       <div className="text-center mb-8 flex flex-col items-center">
-        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Digital Pass</h1>
-        <p className="text-slate-500 text-sm mt-1">Present this QR code for attendance scanning.</p>
+        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Kartu Digital</h1>
+        <p className="text-slate-500 text-sm mt-1">Hadirkan kode QR ini untuk pemindaian kehadiran.</p>
       </div>
 
       {/* ============================================== */}
@@ -232,7 +232,7 @@ export default function Profile() {
                   ))
                 ) : (
                   <div className="inline-block px-3 py-1 bg-red-500/20 backdrop-blur-sm border border-red-500/30 rounded-full text-red-200 text-[10px] font-bold tracking-wider uppercase">
-                    No Active Class
+                    Tidak Ada Kelas Aktif
                   </div>
                 )}
               </div>
@@ -254,7 +254,7 @@ export default function Profile() {
                 />
               ) : (
                 <div className="w-[180px] h-[180px] flex items-center justify-center text-slate-400 bg-slate-50 rounded-2xl text-xs font-medium">
-                  QR Not Available
+                  QR Tidak Tersedia
                 </div>
               )}
             </div>
@@ -306,14 +306,14 @@ export default function Profile() {
           className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
         >
           <Download size={20} />
-          Save Digital Pass
+          Simpan Kartu Digital
         </button>
         <button
           onClick={openEditModal}
           className="w-full flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-2xl shadow-sm transition-all active:scale-95"
         >
           <Edit3 size={18} />
-          Account & Settings
+          Pengaturan Akun
         </button>
       </div>
 
@@ -327,7 +327,7 @@ export default function Profile() {
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
               <div className="flex items-center gap-3 text-blue-600">
                 <Edit3 size={20} />
-                <h3 className="text-lg font-bold tracking-tight text-slate-800">Account Settings</h3>
+                <h3 className="text-lg font-bold tracking-tight text-slate-800">Pengaturan Akun</h3>
               </div>
               <button 
                 onClick={() => setIsEditModalOpen(false)} 
@@ -343,11 +343,11 @@ export default function Profile() {
                 {/* READ ONLY FIELDS (Info Admin) */}
                 <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <div className="col-span-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">NIS (Read Only)</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">NIS (Hanya Baca)</label>
                     <input disabled value={studentData.nis} className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none" />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Active Classes (Read Only)</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Kelas Aktif (Hanya Baca)</label>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {activeClasses.length > 0 ? (
                         activeClasses.map((ac, idx) => (
@@ -356,7 +356,7 @@ export default function Profile() {
                           </span>
                         ))
                       ) : (
-                        <span className="text-[10px] font-bold text-slate-400">None</span>
+                        <span className="text-[10px] font-bold text-slate-400">Tidak ada</span>
                       )}
                     </div>
                   </div>
@@ -365,11 +365,11 @@ export default function Profile() {
                 {/* SECTION 1: ACCOUNT CREDENTIALS */}
                 <div className="space-y-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
                   <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-                    <ShieldCheck size={16} /> Login Credentials
+                    <ShieldCheck size={16} /> Akun Login
                   </h4>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Alamat Email</label>
                     <div className="relative">
                       <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input required type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full pl-9 pr-4 py-3 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
@@ -377,7 +377,7 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Password <span className="text-slate-400 normal-case font-normal">(Leave blank to keep current)</span></label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Kata Sandi <span className="text-slate-400 normal-case font-normal">(Kosongkan untuk tetap menggunakan yang sekarang)</span></label>
                     <div className="relative">
                       <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input type={showPassword ? "text" : "password"} value={editForm.password} onChange={e => setEditForm({...editForm, password: e.target.value})} placeholder="••••••••" className="w-full pl-9 pr-10 py-3 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
@@ -391,32 +391,32 @@ export default function Profile() {
                 {/* SECTION 2: PERSONAL INFO */}
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2 ml-1">
-                    <User size={16} /> Personal Information
+                    <User size={16} /> Informasi Pribadi
                   </h4>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nama Lengkap</label>
                     <input required value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Parent/Guardian</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Wali/Orang Tua</label>
                       <input required value={editForm.parent_name} onChange={e => setEditForm({...editForm, parent_name: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Age</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Usia</label>
                       <input type="number" required value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nomor Telepon</label>
                     <input required placeholder="+62..." value={editForm.phone_number} onChange={e => setEditForm({...editForm, phone_number: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm" />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Complete Address</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Alamat Lengkap</label>
                     <textarea required rows="3" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm resize-none"></textarea>
                   </div>
                 </div>
@@ -429,7 +429,7 @@ export default function Profile() {
                 onClick={() => setIsEditModalOpen(false)} 
                 className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors"
               >
-                Cancel
+                Batal
               </button>
               <button 
                 type="submit" 
@@ -438,7 +438,7 @@ export default function Profile() {
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 <Save size={18} />
-                {isSubmitting ? 'Saving...' : 'Save Settings'}
+                {isSubmitting ? 'Menyimpan...' : 'Simpan Pengaturan'}
               </button>
             </div>
 

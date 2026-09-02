@@ -39,28 +39,28 @@ export default function Navbar() {
             href="#about"
             className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
           >
-            About
+            Tentang
           </a>
 
           <a
             href="#course"
             className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
           >
-            Programs
+            Program
           </a>
 
           <a
             href="#coach"
             className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
           >
-            Coaches
+            Pelatih
           </a>
 
           <a
             href="#testimonials"
             className="hover:text-[#00E5FF] transition-colors pb-1 border-b-2 border-transparent hover:border-[#00E5FF]"
           >
-            Reviews
+            Ulasan
           </a>
         </nav>
 
@@ -70,7 +70,7 @@ export default function Navbar() {
             to="/login"
             className="text-xs uppercase font-bold text-white hover:text-[#00E5FF] transition-colors flex items-center gap-2"
           >
-            Access Portal <ArrowRight size={14} />
+            Akses Portal <ArrowRight size={14} />
           </Link>
         </div>
 
@@ -95,7 +95,7 @@ export default function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className="text-sm font-bold uppercase tracking-widest text-white/80 hover:text-[#00E5FF] transition-colors"
           >
-            About
+            Tentang
           </a>
 
           <a
@@ -103,7 +103,7 @@ export default function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className="text-sm font-bold uppercase tracking-widest text-white/80 hover:text-[#00E5FF] transition-colors"
           >
-            Programs
+            Program
           </a>
 
           <a
@@ -111,7 +111,7 @@ export default function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className="text-sm font-bold uppercase tracking-widest text-white/80 hover:text-[#00E5FF] transition-colors"
           >
-            Coaches
+            Pelatih
           </a>
 
           <a
@@ -119,7 +119,7 @@ export default function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className="text-sm font-bold uppercase tracking-widest text-white/80 hover:text-[#00E5FF] transition-colors"
           >
-            Reviews
+            Ulasan
           </a>
 
           <div className="h-px w-full bg-white/10 my-2"></div>
@@ -129,7 +129,7 @@ export default function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-[#00E5FF]"
           >
-            Access Portal <ArrowRight size={16} />
+            Akses Portal <ArrowRight size={16} />
           </Link>
         </div>
       </div>

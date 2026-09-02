@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 
 const TABS = [
-  { key: "upcoming", label: "Upcoming", icon: CalendarClock },
-  { key: "today", label: "Today", icon: Zap },
-  { key: "past", label: "Past", icon: HistoryIcon },
+  { key: "upcoming", label: "Mendatang", icon: CalendarClock },
+  { key: "today", label: "Hari Ini", icon: Zap },
+  { key: "past", label: "Masa Lalu", icon: HistoryIcon },
 ];
 
 export default function Schedule() {
@@ -33,7 +33,7 @@ export default function Schedule() {
       setLoading(true);
       try {
         const savedUser = localStorage.getItem("user_session");
-        if (!savedUser) throw new Error("Session expired. Please login again.");
+        if (!savedUser) throw new Error("Sesi berakhir. Silakan login kembali.");
         const user = JSON.parse(savedUser);
 
         // 1. Dapatkan student dan semua kelas aktifnya (Many-to-Many)
@@ -46,7 +46,7 @@ export default function Schedule() {
           .eq("user_id", user.id)
           .single();
 
-        if (studentError || !studentData) throw new Error("Athlete data not found.");
+        if (studentError || !studentData) throw new Error("Data atlet tidak ditemukan.");
 
         // Ambil array class_id yang statusnya masih aktif
         const activeClassIds = studentData.student_enrollments
@@ -90,7 +90,7 @@ export default function Schedule() {
         setCoachesMap(cMap);
         setSessions(sessionData);
       } catch (err) {
-        toast.error("Failed to load schedule: " + err.message);
+        toast.error("Gagal memuat jadwal: " + err.message);
       } finally {
         setLoading(false);
       }
@@ -102,7 +102,7 @@ export default function Schedule() {
   const handleCopyPhone = (phoneNumber) => {
     if (!phoneNumber) return;
     navigator.clipboard.writeText(phoneNumber);
-    toast.success("Phone number copied to clipboard!");
+    toast.success("Nomor telepon disalin ke papan klip!");
   };
 
   // ==========================================
@@ -141,7 +141,7 @@ export default function Schedule() {
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
         <p className="text-slate-500 font-medium animate-pulse">
-          Loading your schedule...
+          Memuat jadwal Anda...
         </p>
       </div>
     );
@@ -155,10 +155,10 @@ export default function Schedule() {
       <div className="max-w-7xl mx-auto mb-8">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
           <CalendarDays className="text-blue-600" size={32} />
-          My Training Schedule
+          Jadwal Latihan Saya
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          View your upcoming swimming sessions and assigned instructors.
+          Lihat sesi renang mendatang dan pelatih yang ditugaskan.
         </p>
       </div>
 
@@ -197,7 +197,7 @@ export default function Schedule() {
           </div>
           <input
             type="text"
-            placeholder="Search session..."
+            placeholder="Cari sesi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-100 shadow-sm rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
@@ -275,7 +275,7 @@ export default function Schedule() {
                               <button 
                                 onClick={() => handleCopyPhone(coach.phone)}
                                 className="text-[10px] font-medium flex items-center gap-1.5 opacity-80 hover:opacity-100 mt-0.5 transition-all w-fit cursor-pointer active:scale-95 group"
-                                title="Click to copy phone number"
+                                title="Klik untuk salin nomor telepon"
                               >
                                 <Phone size={10} className="group-hover:text-indigo-900 flex-shrink-0" /> 
                                 <span className="group-hover:underline group-hover:text-indigo-900 truncate">{coach.phone}</span>
@@ -290,7 +290,7 @@ export default function Schedule() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400 font-medium">To be assigned</span>
+                      <span className="text-sm text-slate-400 font-medium">Belum ditentukan</span>
                     )}
                   </div>
                 </div>

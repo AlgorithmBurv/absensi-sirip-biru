@@ -26,33 +26,33 @@ export default function LayoutAdmin() {
   };
 
   const menuItems = [
-    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={22} /> },
+    { name: "Dasbor", path: "/admin", icon: <LayoutDashboard size={22} /> },
     {
-      name: "Landing Page",
+      name: "Halaman Arahan",
       path: "/admin/landing",
       icon: <LayoutTemplate size={22} />,
     },
-    { name: "Classes", path: "/admin/classes", icon: <Layers size={22} /> },
-    { name: "Athletes", path: "/admin/students", icon: <Users size={22} /> },
-    { name: "Coaches", path: "/admin/coaches", icon: <UserPlus size={22} /> },
+    { name: "Kelas", path: "/admin/classes", icon: <Layers size={22} /> },
+    { name: "Atlet", path: "/admin/students", icon: <Users size={22} /> },
+    { name: "Pelatih", path: "/admin/coaches", icon: <UserPlus size={22} /> },
     {
-      name: "Payments", // <-- MENU BARU
+      name: "Pembayaran",
       path: "/admin/payments",
       icon: <CreditCard size={22} />,
     },
     {
-      name: "Sessions",
+      name: "Sesi",
       path: "/admin/sessions",
       icon: <CalendarDays size={22} />,
     },
-    { name: "Scan QR", path: "/admin/scan", icon: <ScanLine size={22} /> },
+    { name: "Pindai QR", path: "/admin/scan", icon: <ScanLine size={22} /> },
     {
-      name: "Manual Entry",
+      name: "Input Manual",
       path: "/admin/manual-entry",
       icon: <ClipboardEdit size={22} />,
     },
     {
-      name: "Records",
+      name: "Catatan",
       path: "/admin/recap",
       icon: <ClipboardList size={22} />,
     },
@@ -60,7 +60,7 @@ export default function LayoutAdmin() {
 
   const pageTitle =
     location.pathname === "/admin"
-      ? "Dashboard"
+      ? "Dasbor"
       : location.pathname.replace("/admin/", "").replace(/-/g, " ");
 
   return (

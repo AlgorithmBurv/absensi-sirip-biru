@@ -66,7 +66,7 @@ export default function Recap() {
         setLogs(data || []);
       }
     } catch {
-      toast.error("Failed to fetch records");
+      toast.error("Gagal mengambil catatan");
     } finally {
       setLoading(false);
     }
@@ -141,13 +141,13 @@ export default function Recap() {
   );
 
   const handleExportExcel = () => {
-    const loadingToast = toast.loading("Generating Excel file...");
+    const loadingToast = toast.loading("Membuat file Excel...");
     try {
       const excelData = processedLogs.map((log) => {
         const dateObj = new Date(log.scanned_at);
         if (attendeeType === "student") {
           return {
-            "Scan Date": dateObj.toLocaleDateString("en-GB"),
+            "Tanggal Pindai": dateObj.toLocaleDateString("id-ID"),
             "Scan Time": dateObj.toLocaleTimeString("en-GB"),
             NIS: log.students?.nis || "-",
             "Athlete Name": log.students?.users?.full_name || "Unknown",
@@ -500,7 +500,7 @@ export default function Recap() {
                     </div>
                     <p className="font-bold text-slate-600">No records found</p>
                     <p className="text-sm mt-1">
-                      Try adjusting your search or filter options.
+                      Coba sesuaikan pencarian atau opsi filter Anda.
                     </p>
                   </td>
                 </tr>

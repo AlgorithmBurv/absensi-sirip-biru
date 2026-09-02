@@ -51,7 +51,7 @@ export default function CoachProfile() {
       if (error) throw error;
       setCoachData(data);
     } catch (err) {
-      toast.error("Failed to load profile data. Please contact admin.");
+      toast.error("Gagal memuat data profil. Silakan hubungi admin.");
     } finally {
       setLoading(false);
     }
@@ -63,11 +63,11 @@ export default function CoachProfile() {
 
   // Download QR — sama persis dengan Student
   const handleDownloadQR = () => {
-    const loadingToast = toast.loading("Preparing your Digital Pass...");
+    const loadingToast = toast.loading("Menyiapkan Kartu Instruktur...");
     const svgElement = qrRef.current?.querySelector("svg");
     
     if (!svgElement) {
-      toast.error("QR Code not ready yet.", { id: loadingToast });
+      toast.error("Kode QR belum siap.", { id: loadingToast });
       return;
     }
 
@@ -92,12 +92,12 @@ export default function CoachProfile() {
         link.href = pngUrl;
         link.click();
         
-        toast.success("Instructor Pass downloaded successfully!", { id: loadingToast });
+        toast.success("Kartu Instruktur berhasil diunduh!", { id: loadingToast });
       };
       
       img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
     } catch (error) {
-      toast.error("Failed to download image.", { id: loadingToast });
+      toast.error("Gagal mengunduh gambar.", { id: loadingToast });
     }
   };
 
@@ -133,7 +133,7 @@ export default function CoachProfile() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const loadingToast = toast.loading("Saving changes...");
+    const loadingToast = toast.loading("Menyimpan perubahan...");
 
     const cleanAchievements = editForm.achievements.filter(a => a.trim() !== "");
 
@@ -201,7 +201,7 @@ export default function CoachProfile() {
 
       if (coachError) throw coachError;
 
-      toast.success("Profile updated successfully!", { id: loadingToast });
+      toast.success("Profil berhasil diperbarui!", { id: loadingToast });
       setIsEditModalOpen(false);
       fetchProfile();
       

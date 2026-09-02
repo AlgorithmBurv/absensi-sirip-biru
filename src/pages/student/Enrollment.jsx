@@ -35,7 +35,7 @@ export default function Enrollment() {
     setLoading(true);
     try {
       const savedUser = localStorage.getItem("user_session");
-      if (!savedUser) throw new Error("Session expired. Please login again.");
+      if (!savedUser) throw new Error("Sesi berakhir. Silakan login kembali.");
       const user = JSON.parse(savedUser);
 
       // 1. Dapatkan student_id
@@ -45,7 +45,7 @@ export default function Enrollment() {
         .eq("user_id", user.id)
         .single();
 
-      if (studentError || !student) throw new Error("Athlete data not found.");
+      if (studentError || !student) throw new Error("Data atlet tidak ditemukan.");
       setStudentId(student.id);
 
       // 2. Ambil riwayat pembayaran student ini
@@ -106,7 +106,7 @@ export default function Enrollment() {
 
     // Validasi Ukuran (Max 2MB)
     if (selectedFile.size > 2 * 1024 * 1024) {
-      toast.error("File size cannot exceed 2MB.");
+      toast.error("Ukuran file tidak boleh melebihi 2MB.");
       fileInputRef.current.value = "";
       return;
     }
@@ -114,7 +114,7 @@ export default function Enrollment() {
     // Validasi Tipe (JPEG, PNG)
     const validTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!validTypes.includes(selectedFile.type)) {
-      toast.error("Only JPG and PNG files are allowed.");
+      toast.error("Hanya file JPG dan PNG yang diizinkan.");
       fileInputRef.current.value = "";
       return;
     }
@@ -132,11 +132,11 @@ export default function Enrollment() {
   // Handle Submit Payment
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedClassId) return toast.error("Please select a class.");
-    if (!file) return toast.error("Please upload a payment receipt.");
+    if (!selectedClassId) return toast.error("Silakan pilih kelas.");
+    if (!file) return toast.error("Silakan unggah bukti pembayaran.");
 
     setSubmitting(true);
-    const loadingToast = toast.loading("Submitting payment request...");
+    const loadingToast = toast.loading("Mengirim permintaan pembayaran...");
 
     try {
       // 1. Upload File ke Supabase Storage (Bucket: images)
@@ -148,7 +148,7 @@ export default function Enrollment() {
         .from("images")
         .upload(filePath, file);
 
-      if (uploadError) throw new Error("Failed to upload receipt image.");
+      if (uploadError) throw new Error("Gagal mengunggah gambar bukti.");
 
       // Ambil Public URL
       const { data: urlData } = supabase.storage
@@ -170,7 +170,7 @@ export default function Enrollment() {
 
       if (insertError) throw insertError;
 
-      toast.success("Payment submitted! Waiting for admin verification.", {
+      toast.success("Pembayaran dikirim! Menunggu verifikasi admin.", {
         id: loadingToast,
       });
 
@@ -198,18 +198,18 @@ export default function Enrollment() {
     if (status === "approved")
       return (
         <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-200">
-          <CheckCircle2 size={14} /> Approved
+          <CheckCircle2 size={14} /> Disetujui
         </span>
       );
     if (status === "rejected")
       return (
         <span className="flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-200">
-          <XCircle size={14} /> Rejected
+          <XCircle size={14} /> Ditolak
         </span>
       );
     return (
       <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-200">
-        <Clock size={14} /> Pending
+        <Clock size={14} /> Menunggu
       </span>
     );
   };
@@ -218,7 +218,7 @@ export default function Enrollment() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Loading data...</p>
+        <p className="text-slate-500 font-medium animate-pulse">Memuat data...</p>
       </div>
     );
   }
@@ -230,10 +230,10 @@ export default function Enrollment() {
       <div className="max-w-7xl mx-auto mb-8">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
           <CreditCard className="text-blue-600" size={32} />
-          Class Enrollment
+          Pendaftaran Kelas
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Purchase new classes and track your payment history.
+          Daftar kelas baru dan lacak riwayat pembayaran Anda.
         </p>
       </div>
 
@@ -243,20 +243,20 @@ export default function Enrollment() {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 p-6 md:p-8">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 flex items-center gap-2">
-              <BookOpen size={18} className="text-blue-600" /> New Enrollment
+              <BookOpen size={18} className="text-blue-600" /> Pendaftaran Baru
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                  Available Classes
+                  Kelas Tersedia
                 </label>
                 <select
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700 cursor-pointer shadow-inner appearance-none"
                 >
-                  <option value="">-- Choose a Class --</option>
+                  <option value="">-- Pilih Kelas --</option>
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -265,7 +265,7 @@ export default function Enrollment() {
                 </select>
                 {classes.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1 ml-1 font-medium">
-                    You are already enrolled or have pending requests for all available classes.
+                    Anda sudah terdaftar atau memiliki permintaan tertunda untuk semua kelas yang tersedia.
                   </p>
                 )}
               </div>
@@ -273,15 +273,15 @@ export default function Enrollment() {
               {selectedClassDetails && (
                 <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3 animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-500">Price</span>
+                    <span className="text-xs font-bold text-slate-500">Harga</span>
                     <span className="font-black text-blue-700 text-lg">
                       {formatRupiah(selectedClassDetails.price)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center border-t border-blue-100 pt-3">
-                    <span className="text-xs font-bold text-slate-500">Capacity</span>
+                    <span className="text-xs font-bold text-slate-500">Kapasitas</span>
                     <span className="text-xs font-bold bg-white px-2.5 py-1 rounded-full text-slate-700 border border-slate-100">
-                      Max {selectedClassDetails.max_capacity} Students
+                      Maks {selectedClassDetails.max_capacity} Siswa
                     </span>
                   </div>
                 </div>
@@ -289,7 +289,7 @@ export default function Enrollment() {
 
               <div className="space-y-2 pt-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                  Upload Payment Receipt
+                  Unggah Bukti Pembayaran
                 </label>
                 {!previewUrl ? (
                   <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl hover:bg-slate-100 hover:border-blue-400 transition-all cursor-pointer group">
@@ -316,7 +316,7 @@ export default function Enrollment() {
                         type="button"
                         onClick={clearFile}
                         className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-transform active:scale-95"
-                        title="Remove Image"
+                        title="Hapus Gambar"
                       >
                         <Trash2 size={20} />
                       </button>
@@ -348,7 +348,7 @@ export default function Enrollment() {
           <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-100 overflow-hidden flex flex-col h-full min-h-[500px]">
             <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
               <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <FileText size={18} className="text-blue-600" /> Payment History
+                <FileText size={18} className="text-blue-600" /> Riwayat Pembayaran
               </h2>
               <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
                 {payments.length} Records
@@ -405,7 +405,7 @@ export default function Enrollment() {
                           {p.status === "rejected" && p.reject_reason && (
                             <div className="flex items-start gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-xs w-full sm:max-w-sm">
                               <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                              <span className="font-medium">Reason: {p.reject_reason}</span>
+                              <span className="font-medium">Alasan: {p.reject_reason}</span>
                             </div>
                           )}
                         </div>
